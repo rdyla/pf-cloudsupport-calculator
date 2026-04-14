@@ -175,13 +175,13 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
                   onChange={e => applyTier(e.target.value)}
                   style={{ ...inputStyle, cursor: 'pointer' }}
                 >
-                  <option value="">— Select a tier —</option>
+                  <option value="" style={{ color: '#0f172a', background: '#ffffff' }}>— Select a tier —</option>
                   {(Object.entries(MSO_TIERS) as [MsoTierKey, typeof MSO_TIERS[MsoTierKey]][]).map(([key, t]) => (
-                    <option key={key} value={key}>
+                    <option key={key} value={key} style={{ color: '#0f172a', background: '#ffffff' }}>
                       {t.label} — {t.engineer} · ~${(t.fee / 1000).toFixed(0)}k/yr
                     </option>
                   ))}
-                  <option value="custom">Custom — Enter fee manually</option>
+                  <option value="custom" style={{ color: '#0f172a', background: '#ffffff' }}>Custom — Enter fee manually</option>
                 </select>
               </div>
 
