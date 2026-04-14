@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy:        #0d1b2e;
+  --navy-mid:    #152540;
+  --navy-light:  #1e3459;
+  --teal:        #00b8a0;
+  --teal-dim:    #007d6e;
+  --teal-pale:   rgba(0,184,160,0.08);
+  --teal-pale2:  rgba(0,184,160,0.15);
+  --gold:        #e8b84b;
+  --gold-dim:    #c49a30;
+  --text-primary:   #f0f4f8;
+  --text-secondary: #8fa3b8;
+  --text-muted:     #4a6580;
+  --border:      rgba(255,255,255,0.07);
+  --border-mid:  rgba(255,255,255,0.12);
+  --surface:     rgba(255,255,255,0.04);
+  --surface-mid: rgba(255,255,255,0.07);
+  --red:   #e05252;
+  --green: #3fb87a;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--navy);
+  color: var(--text-primary);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Reset inputs */
+input, textarea, select, button {
+  font-family: inherit;
+}
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  opacity: 0.4;
+}

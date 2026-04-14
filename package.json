@@ -1,0 +1,14 @@
+{
+  "name": "cloudsupport-calculator",
+  "private": true,
+  "workspaces": ["frontend", "worker"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=frontend\" \"npm run dev --workspace=worker\"",
+    "build": "npm run build --workspace=frontend",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

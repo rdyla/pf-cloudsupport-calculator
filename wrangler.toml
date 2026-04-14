@@ -1,0 +1,23 @@
+name = "cloudsupport-calculator"
+main = "worker/src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "frontend/dist"
+not_found_handling = "single-page-application"
+
+[vars]
+# Non-secret config — fill these in; secrets go via `wrangler secret put`
+AZURE_TENANT_ID = "c1b7e3af-ae3a-45b7-b840-4fe8ca013223"
+AZURE_CLIENT_ID = "d8acbc0c-0f98-4e6f-b755-0062264c1da5"
+DYNAMICS_URL    = "https://packetfusioncrm.crm.dynamics.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cloudsupport-calculator"
+database_id   = "ce868146-d229-4266-b1f4-cc49fdcaa572"
+
+[[kv_namespaces]]
+binding  = "SESSION_KV"
+id       = "7d73b362d1ba4f6f903bf60ff026d245"

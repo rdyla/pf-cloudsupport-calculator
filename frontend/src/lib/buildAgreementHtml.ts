@@ -1,0 +1,906 @@
+import type { OppFormData, OppCalcResult } from '../types';
+import { LOGO_SRC } from './logoData';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function escHtml(s: string | number | boolean): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Formats a number as USD with 2 decimal places (matches original fmtFull). */
+function fmtFull(n: number): string {
+  return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Converts ISO date string (YYYY-MM-DD) to MM/DD/YYYY for display, or returns placeholder. */
+function fmtDate(iso: string): string {
+  if (!iso) return 'MM/DD/YYYY';
+  const [y, m, d] = iso.split('-');
+  return `${m}/${d}/${y}`;
+}
+
+// ─── Shared CSS + Google Fonts (embedded in every returned HTML string) ───────
+
+function sharedStyles(): string {
+  return `
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: #f0f4f8; padding: 20px; }
+
+      /* ── AGREEMENT DOC ── */
+      .agreement-doc {
+        background: #fff;
+        color: #1c2333;
+        border-radius: 12px;
+        overflow: hidden;
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 13.5px;
+        line-height: 1.75;
+        box-shadow: 0 4px 32px rgba(0,0,0,0.18);
+      }
+      .agreement-doc .doc-letterhead {
+        background: #ffffff;
+        border-bottom: 3px solid #0d1b2e;
+        padding: 28px 52px 24px;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      .agreement-doc .lh-wordmark { font-family: 'DM Serif Display', serif; font-size: 22px; color: #0d1b2e; letter-spacing: 0.01em; margin-bottom: 2px; }
+      .agreement-doc .lh-tagline { font-size: 11px; color: #94a3b8; letter-spacing: 0.12em; text-transform: uppercase; }
+      .agreement-doc .lh-doc-type { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #007d6e; margin-bottom: 4px; text-align: right; }
+      .agreement-doc .lh-doc-date { font-size: 12px; color: #64748b; text-align: right; }
+      .agreement-doc .doc-title-band { background: #f8fafc; border-bottom: 1px solid #e4eaf2; padding: 28px 52px 24px; }
+      .agreement-doc .doc-prepared-for { font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; }
+      .agreement-doc .doc-customer-name { font-family: 'DM Serif Display', serif; font-size: 30px; color: #0d1b2e; line-height: 1.2; margin-bottom: 10px; }
+      .agreement-doc .doc-type-pill { display: inline-block; background: #e8f5f2; color: #007d6e; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; border: 1px solid #b2dfdb; }
+      .agreement-doc .doc-body { padding: 36px 52px 48px; }
+      .agreement-doc .doc-intro { color: #4a5568; font-size: 13.5px; line-height: 1.8; margin-bottom: 32px; padding-bottom: 28px; border-bottom: 1px solid #e8edf4; }
+      .agreement-doc .doc-intro strong { color: #0d1b2e; font-weight: 600; }
+      .agreement-doc .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; margin-top: 32px; }
+      .agreement-doc .section-header:first-child { margin-top: 0; }
+      .agreement-doc .section-num { width: 28px; height: 28px; border-radius: 50%; background: #0d1b2e; color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; }
+      .agreement-doc .section-title { font-size: 14px; font-weight: 700; color: #0d1b2e; letter-spacing: 0.02em; }
+      .agreement-doc .section-divider { flex: 1; height: 1px; background: #e4eaf2; }
+      .agreement-doc .pricing-wrap { border: 1px solid #e4eaf2; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+      .agreement-doc .pricing-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .agreement-doc .pricing-table thead tr { background: #f1f5f9; border-bottom: 1px solid #e4eaf2; }
+      .agreement-doc .pricing-table th { padding: 10px 16px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #64748b; }
+      .agreement-doc .pricing-table th.price-col { text-align: right; }
+      .agreement-doc .pricing-table td { padding: 14px 16px; color: #374151; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+      .agreement-doc .pricing-table tbody tr:last-child td { border-bottom: none; }
+      .agreement-doc .pricing-table .price-col { font-family: 'IBM Plex Mono', monospace; font-weight: 600; text-align: right; color: #0d1b2e; white-space: nowrap; font-size: 14px; }
+      .agreement-doc .pricing-table .label-cell { font-weight: 600; color: #1e293b; }
+      .agreement-doc .pricing-table .sub-cell { font-size: 12px; color: #64748b; margin-top: 2px; }
+      .agreement-doc .pricing-table tfoot td { background: #f8fafc; border-top: 1px solid #e4eaf2; font-size: 11px; color: #94a3b8; font-style: italic; padding: 10px 16px; }
+      .agreement-doc .pricing-note { font-size: 12px; color: #059669; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 8px 14px; margin-bottom: 20px; }
+      .agreement-doc .price-summary { display: grid; grid-template-columns: 1fr 1px 1fr; margin: 28px 0; border: 1px solid #e4eaf2; border-radius: 10px; overflow: hidden; }
+      .agreement-doc .price-summary-cell { padding: 20px 24px; background: #f8fafc; }
+      .agreement-doc .price-summary-cell.accent { background: #0d1b2e; }
+      .agreement-doc .price-summary-divider { background: #e4eaf2; }
+      .agreement-doc .ps-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; }
+      .agreement-doc .price-summary-cell.accent .ps-label { color: rgba(255,255,255,0.45); }
+      .agreement-doc .ps-value { font-family: 'DM Serif Display', serif; font-size: 30px; color: #0d1b2e; line-height: 1.1; }
+      .agreement-doc .price-summary-cell.accent .ps-value { color: #4dd0c4; }
+      .agreement-doc .ps-sub { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+      .agreement-doc .price-summary-cell.accent .ps-sub { color: rgba(255,255,255,0.35); }
+      .agreement-doc .coverage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+      .agreement-doc .coverage-card { border: 1px solid #e8edf4; border-radius: 8px; padding: 14px 16px; border-left: 3px solid #00796b; background: #fff; }
+      .agreement-doc .coverage-card-title { font-size: 12.5px; font-weight: 700; color: #1e293b; margin-bottom: 4px; line-height: 1.3; }
+      .agreement-doc .coverage-card-desc { font-size: 12px; color: #64748b; line-height: 1.6; }
+      .agreement-doc .mac-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+      .agreement-doc .mac-item { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: #374151; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e8edf4; }
+      .agreement-doc .mac-dot { width: 5px; height: 5px; border-radius: 50%; background: #00796b; margin-top: 6px; flex-shrink: 0; }
+      .agreement-doc .scope-block { background: #fafafa; border: 1px solid #e8edf4; border-radius: 10px; padding: 18px 22px; margin-bottom: 4px; }
+      .agreement-doc .scope-intro { font-size: 12.5px; color: #64748b; margin-bottom: 14px; line-height: 1.6; }
+      .agreement-doc .scope-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f4f8; }
+      .agreement-doc .scope-item:last-child { border-bottom: none; padding-bottom: 0; }
+      .agreement-doc .scope-label { font-size: 13px; font-weight: 600; color: #374151; }
+      .agreement-doc .scope-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; line-height: 1.5; }
+      .agreement-doc .scope-tag { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #b0bec5; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 3px 8px; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+      .agreement-doc .term-panel { background: #f8fafc; border: 1px solid #e4eaf2; border-radius: 10px; padding: 22px 24px; margin-bottom: 4px; }
+      .agreement-doc .term-dates { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: #e4eaf2; border-radius: 8px; overflow: hidden; margin-bottom: 18px; }
+      .agreement-doc .term-date-cell { background: #fff; padding: 12px 16px; }
+      .agreement-doc .term-date-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
+      .agreement-doc .term-date-val { font-size: 13px; font-weight: 600; color: #0d1b2e; }
+      .agreement-doc .term-prose { font-size: 12.5px; color: #4a5568; line-height: 1.8; }
+      .agreement-doc .term-prose p { margin-bottom: 8px; }
+      .agreement-doc .term-prose p:last-child { margin-bottom: 0; }
+      .agreement-doc .sig-band { background: #f8fafc; border-top: 1px solid #e4eaf2; padding: 36px 52px; margin-top: 32px; }
+      .agreement-doc .sig-band-title { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; margin-bottom: 24px; text-align: center; }
+      .agreement-doc .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+      .agreement-doc .sig-party-name { font-size: 15px; font-weight: 700; color: #0d1b2e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #0d1b2e; }
+      .agreement-doc .sig-row { margin-bottom: 20px; }
+      .agreement-doc .sig-line { height: 32px; border-bottom: 1px solid #cbd5e1; margin-bottom: 4px; }
+      .agreement-doc .sig-field-label { font-size: 10px; color: #94a3b8; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+
+      /* ── SIG DOC ── */
+      .sig-doc { background: #fff; color: #1a202c; border-radius: 10px; overflow: hidden; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; line-height: 1.7; box-shadow: 0 4px 32px rgba(0,0,0,0.18); }
+      .sig-doc .sd-top-rule { height: 4px; background: #0d1b2e; }
+      .sig-doc .sd-header { padding: 24px 44px 20px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #fff; }
+      .sig-doc .sd-wordmark { font-family: 'DM Serif Display', serif; font-size: 20px; color: #0d1b2e; margin-bottom: 2px; }
+      .sig-doc .sd-tagline { font-size: 10px; color: #94a3b8; letter-spacing: 0.1em; text-transform: uppercase; }
+      .sig-doc .sd-doc-info { text-align: right; }
+      .sig-doc .sd-doc-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #0d1b2e; margin-bottom: 3px; }
+      .sig-doc .sd-doc-ref { font-size: 11px; color: #64748b; font-family: 'IBM Plex Mono', monospace; }
+      .sig-doc .sd-parties { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #e2e8f0; }
+      .sig-doc .sd-party { padding: 16px 28px; border-right: 1px solid #e2e8f0; background: #f8fafc; }
+      .sig-doc .sd-party:last-child { border-right: none; }
+      .sig-doc .sd-party-role { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; margin-bottom: 3px; }
+      .sig-doc .sd-party-name { font-size: 14px; font-weight: 700; color: #0d1b2e; }
+      .sig-doc .sd-party-sub { font-size: 11px; color: #64748b; margin-top: 1px; }
+      .sig-doc .sd-body { padding: 28px 44px 36px; }
+      .sig-doc .sd-recital { font-size: 12.5px; color: #4a5568; line-height: 1.75; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid #f0f4f8; }
+      .sig-doc .sd-recital strong { color: #0d1b2e; }
+      .sig-doc .sd-section-label { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; margin-top: 22px; padding-bottom: 5px; border-bottom: 1px solid #f0f4f8; }
+      .sig-doc .sd-line-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f7fafc; gap: 12px; }
+      .sig-doc .sd-line-item:last-child { border-bottom: none; }
+      .sig-doc .sdli-desc { flex: 1; }
+      .sig-doc .sdli-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+      .sig-doc .sdli-note { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+      .sig-doc .sdli-qty { font-size: 12px; color: #64748b; text-align: right; min-width: 80px; font-family: 'IBM Plex Mono', monospace; }
+      .sig-doc .sdli-price { font-size: 14px; font-weight: 700; color: #0d1b2e; text-align: right; min-width: 110px; font-family: 'IBM Plex Mono', monospace; }
+      .sig-doc .sd-totals { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-top: 14px; }
+      .sig-doc .sd-total-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; border-bottom: 1px solid #f0f4f8; }
+      .sig-doc .sd-total-row:last-child { border-bottom: none; }
+      .sig-doc .sd-total-row.grand { background: #0d1b2e; padding: 14px 18px; }
+      .sig-doc .sd-total-label { color: #64748b; font-size: 12px; }
+      .sig-doc .sd-total-row.grand .sd-total-label { color: rgba(255,255,255,0.5); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+      .sig-doc .sd-total-val { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: #0d1b2e; }
+      .sig-doc .sd-total-row.grand .sd-total-val { font-family: 'DM Serif Display', serif; font-size: 26px; color: #4dd0c4; font-weight: 400; }
+      .sig-doc .sd-coverage-list { list-style: none; padding: 0; margin: 0; }
+      .sig-doc .sd-coverage-list li { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f7fafc; align-items: flex-start; font-size: 12.5px; color: #374151; }
+      .sig-doc .sd-coverage-list li:last-child { border-bottom: none; }
+      .sig-doc .sd-cov-num { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; color: #b0bec5; min-width: 20px; margin-top: 2px; }
+      .sig-doc .sd-cov-body strong { color: #1e293b; }
+      .sig-doc .sd-scope { font-size: 12px; color: #64748b; line-height: 1.7; background: #fafbfc; border: 1px solid #e8edf4; border-radius: 6px; padding: 12px 16px; }
+      .sig-doc .sd-term { font-size: 12.5px; color: #374151; line-height: 1.8; }
+      .sig-doc .sd-term strong { color: #0d1b2e; }
+      .sig-doc .sd-term-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px 16px; margin-top: 10px; font-size: 12.5px; color: #166534; font-weight: 500; line-height: 1.6; }
+      .sig-doc .sd-sig-section { margin-top: 28px; padding-top: 22px; border-top: 2px solid #0d1b2e; }
+      .sig-doc .sd-sig-preamble { font-size: 11.5px; color: #64748b; line-height: 1.7; margin-bottom: 28px; }
+      .sig-doc .sd-sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+      .sig-doc .sd-sig-party-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; margin-bottom: 3px; }
+      .sig-doc .sd-sig-party-name { font-size: 14px; font-weight: 700; color: #0d1b2e; margin-bottom: 18px; }
+      .sig-doc .sd-sig-field { margin-bottom: 18px; }
+      .sig-doc .sd-sig-line { height: 38px; border-bottom: 1px solid #1e293b; margin-bottom: 4px; }
+      .sig-doc .sd-sig-field-label { font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; }
+      .sig-doc .sd-footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid #f0f4f8; font-size: 10px; color: #b0bec5; text-align: center; line-height: 1.6; }
+
+      @media print {
+        body { background: #fff; padding: 0; margin: 0; }
+        .agreement-doc, .sig-doc {
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+      }
+    </style>
+  `;
+}
+
+// ─── Shared sig-doc signature fields ─────────────────────────────────────────
+
+function sdSigFields(): string {
+  return `
+          <div class="sd-sig-field"><div class="sd-sig-line"></div><div class="sd-sig-field-label">Authorized Signature</div></div>
+          <div class="sd-sig-field"><div class="sd-sig-line"></div><div class="sd-sig-field-label">Printed Name</div></div>
+          <div class="sd-sig-field"><div class="sd-sig-line"></div><div class="sd-sig-field-label">Title</div></div>
+          <div class="sd-sig-field"><div class="sd-sig-line"></div><div class="sd-sig-field-label">Date</div></div>
+  `;
+}
+
+// ─── Shared agreement-doc signature rows ─────────────────────────────────────
+
+function docSigRows(): string {
+  return `
+        <div class="sig-row"><div class="sig-line"></div><div class="sig-field-label">Authorized Signature</div></div>
+        <div class="sig-row"><div class="sig-line"></div><div class="sig-field-label">Printed Name</div></div>
+        <div class="sig-row"><div class="sig-line"></div><div class="sig-field-label">Title</div></div>
+        <div class="sig-row"><div class="sig-line"></div><div class="sig-field-label">Date</div></div>
+  `;
+}
+
+// ─── buildProposalHtml ────────────────────────────────────────────────────────
+
+export function buildProposalHtml(
+  oppName: string,
+  d: OppFormData,
+  calc: OppCalcResult,
+  versionNum: number,
+): string {
+  const type = d.oppType || 'UCaaS + CCaaS';
+  const customer = oppName || '[Customer Name]';
+  const term = d.term || 3;
+  const startDate = fmtDate(d.contractStart);
+  const endDate = fmtDate(d.contractEnd);
+  const users = d.ucaasUsers || 0;
+  const ccaasLic = d.ccaasLicensing || 0;
+  const afterHours = d.afterHoursRate ?? 165;
+  const advRate = d.advancedTaskRate ?? 145;
+  const verStr = versionNum === 0 ? 'Draft' : `v${versionNum}`;
+
+  const ucaasTierLabel =
+    users <= 0 ? '\u2014' :
+    users <= 100 ? 'Starter' :
+    users <= 500 ? 'Business' :
+    users <= 2000 ? 'Professional' : 'Enterprise';
+
+  const showUCaaS = type !== 'CCaaS Only';
+  const showCCaaS = type !== 'UCaaS Only';
+
+  let secN = 0;
+  const secNum = () => { secN++; return secN; };
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const typeLabel =
+    type === 'CCaaS Only' ? 'CCaaS' :
+    type === 'UCaaS Only' ? 'UCaaS' :
+    'UCaaS and CCaaS';
+
+  const ucaasSection = showUCaaS ? `
+      <div class="section-header">
+        <div class="section-num">${secNum()}</div>
+        <div class="section-title">UCaaS CloudSupport</div>
+        <div class="section-divider"></div>
+      </div>
+      <p style="font-size:12.5px;color:#64748b;margin-bottom:12px;">Pricing is based on the number of active UCaaS seats and billed annually.</p>
+      <div class="pricing-wrap">
+        <table class="pricing-table">
+          <thead><tr><th>Service Tier</th><th>Active Seats</th><th>Billing Cycle</th><th class="price-col">Annual Investment</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="label-cell">${ucaasTierLabel}</div><div class="sub-cell">UCaaS CloudSupport</div></td>
+              <td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:#1e293b;">${users > 0 ? users.toLocaleString('en-US') : '\u2014'}</td>
+              <td style="font-size:12px;color:#64748b;">Annual, auto-renewing</td>
+              <td class="price-col">${users > 0 ? fmtFull(calc.ucaasSup) : '\u2014'}</td>
+            </tr>
+          </tbody>
+          <tfoot><tr><td colspan="4">Auto-renews and co-terms with Customer\u2019s Master Services Agreement or Subscription Term</td></tr></tfoot>
+        </table>
+      </div>
+      ${calc.minApplied ? '<div class="pricing-note">Annual minimum of $2,500.00 applied \u2014 seat count pricing falls below the baseline commitment.</div>' : ''}
+  ` : '';
+
+  const ccaasSection = showCCaaS ? `
+      <div class="section-header">
+        <div class="section-num">${secNum()}</div>
+        <div class="section-title">CCaaS CloudSupport${showUCaaS ? ' \u2014 Additional to UCaaS' : ''}</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="pricing-wrap">
+        <table class="pricing-table">
+          <thead><tr><th>Component</th><th class="price-col">Annual Investment</th></tr></thead>
+          <tbody>
+            ${ccaasLic > 0
+              ? `<tr>
+              <td><div class="label-cell">Contact Center Support</div><div class="sub-cell">CCaaS CloudSupport</div></td>
+              <td class="price-col">${fmtFull(calc.ccaasSup)}</td>
+            </tr>`
+              : `<tr><td colspan="2" style="color:#94a3b8;font-style:italic;text-align:center;padding:20px;">No CCaaS components configured</td></tr>`}
+          </tbody>
+          <tfoot><tr><td colspan="2">Usage, consumption, DIDs, and telco charges are excluded from CCaaS licensing. Auto-renews and co-terms with Customer\u2019s Subscription Term.</td></tr></tfoot>
+        </table>
+      </div>
+  ` : '';
+
+  const customSection = (d.customLines && d.customLines.length > 0) ? `
+      <div class="section-header">
+        <div class="section-num">${secNum()}</div>
+        <div class="section-title">Custom Pricing Adjustments</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="pricing-wrap">
+        <table class="pricing-table">
+          <thead><tr><th>Description</th><th class="price-col">Annual</th></tr></thead>
+          <tbody>
+            ${d.customLines.map(l => `<tr><td class="label-cell">${escHtml(l.label)}</td><td class="price-col">${fmtFull(l.price || 0)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+  ` : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudSupport Agreement \u2014 ${escHtml(customer)}</title>
+  ${sharedStyles()}
+</head>
+<body>
+<div class="agreement-doc">
+
+  <!-- LETTERHEAD -->
+  <div class="doc-letterhead">
+    <div class="lh-brand">
+      <img src="${LOGO_SRC}" alt="PacketFusion" style="height:46px;width:auto;display:block;">
+    </div>
+    <div class="lh-meta">
+      <div class="lh-doc-type">CloudSupport Agreement</div>
+      <div class="lh-doc-date">${verStr} &nbsp;\u00b7&nbsp; ${today}</div>
+    </div>
+  </div>
+
+  <!-- TITLE BAND -->
+  <div class="doc-title-band">
+    <div class="doc-prepared-for">Prepared for</div>
+    <div class="doc-customer-name">${escHtml(customer)}</div>
+    <span class="doc-type-pill">${escHtml(type)}</span>
+  </div>
+
+  <!-- BODY -->
+  <div class="doc-body">
+
+    <p class="doc-intro">
+      Packet Fusion\u2019s <strong>CloudSupport</strong> combines priority response times, proactive system optimization, and personalized growth strategies to maximize your organization\u2019s investment across your entire ${typeLabel} landscape \u2014 including collaboration, voice, and contact center applications. Whether it\u2019s troubleshooting, updates, or long-term planning, our CloudSupport ensures your collaboration solutions perform efficiently and scale with your business needs.
+    </p>
+
+    ${ucaasSection}
+
+    ${ccaasSection}
+
+    <!-- CUSTOM LINE ITEMS -->
+    ${customSection}
+
+    <!-- PRICE SUMMARY BAR -->
+    <div class="price-summary">
+      <div class="price-summary-cell accent">
+        <div class="ps-label">Total Annual Investment</div>
+        <div class="ps-value">${fmtFull(calc.annual)}</div>
+        <div class="ps-sub">Billed annually \u00b7 Auto-renewing</div>
+      </div>
+      <div class="price-summary-divider"></div>
+      <div class="price-summary-cell">
+        <div class="ps-label">Total Contract Value \u00b7 ${term}-Year Term</div>
+        <div class="ps-value" style="color:#0d1b2e;font-size:26px;">${fmtFull(calc.tcv)}</div>
+        <div class="ps-sub">${startDate} \u2013 ${endDate}</div>
+      </div>
+    </div>
+
+    <!-- COVERAGE -->
+    <div class="section-header">
+      <div class="section-num">${secNum()}</div>
+      <div class="section-title">What\u2019s Included in Your CloudSupport Plan</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="coverage-grid">
+      <div class="coverage-card">
+        <div class="coverage-card-title">Adds, Moves &amp; Changes During Business Hours</div>
+        <div class="coverage-card-desc">Provided at no additional charge from 7:00 am \u2013 5:00 pm PST. Timely updates with no extra billing.</div>
+      </div>
+      <div class="coverage-card">
+        <div class="coverage-card-title">After-Hours Support at ${fmtFull(afterHours)}/hr</div>
+        <div class="coverage-card-desc">Discounted labor for engagements over 30 minutes outside standard business hours \u2014 ideal for multi-timezone operations.</div>
+      </div>
+      <div class="coverage-card">
+        <div class="coverage-card-title">Advanced Task Rate at ${fmtFull(advRate)}/hr</div>
+        <div class="coverage-card-desc">Preferred pricing for new call flows, advanced user setups, third-party integrations, and API or custom development.</div>
+      </div>
+      <div class="coverage-card">
+        <div class="coverage-card-title">Proactive SLA Guarantees</div>
+        <div class="coverage-card-desc">Standard requests responded to within 4 hours. Critical or emergency situations receive a 30-minute response commitment.</div>
+      </div>
+      <div class="coverage-card">
+        <div class="coverage-card-title">Packet Fusion Customer Portal Access</div>
+        <div class="coverage-card-desc">Submit and track support tickets, review historical case records, and receive real-time status updates in one place.</div>
+      </div>
+      <div class="coverage-card">
+        <div class="coverage-card-title">Quarterly Optimization &amp; User Coaching</div>
+        <div class="coverage-card-desc">Proactive system reviews, call flow audits, quarterly end-user training sessions, and strategic advisory for growth and scalability.</div>
+      </div>
+      <div class="coverage-card" style="grid-column:1/-1;">
+        <div class="coverage-card-title">Manufacturer Direct Support Option</div>
+        <div class="coverage-card-desc">Retain full flexibility to engage directly with the manufacturer\u2019s support team at any time, giving your organization an additional layer of troubleshooting resources.</div>
+      </div>
+    </div>
+
+    <!-- MACs -->
+    <div class="section-header" style="margin-top:28px;">
+      <div class="section-num">${secNum()}</div>
+      <div class="section-title">Included Adds, Moves &amp; Changes</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="mac-grid">
+      <div class="mac-item"><div class="mac-dot"></div>Name and extension changes</div>
+      <div class="mac-item"><div class="mac-dot"></div>Call groups, queues, auto receptionists &amp; schedules</div>
+      <div class="mac-item"><div class="mac-dot"></div>Minor call flow adjustments (30 minutes or less)</div>
+      <div class="mac-item"><div class="mac-dot"></div>Troubleshooting &amp; resolving common technical issues</div>
+      <div class="mac-item"><div class="mac-dot"></div>User questions and feature guidance</div>
+      <div class="mac-item"><div class="mac-dot"></div>Activating new licenses or reassigning existing ones</div>
+    </div>
+
+    <!-- OUTSIDE SCOPE -->
+    <div class="section-header" style="margin-top:28px;">
+      <div class="section-num">${secNum()}</div>
+      <div class="section-title">Outside Scope of Support</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="scope-block">
+      <div class="scope-intro">The following services fall outside the standard CloudSupport agreement and are available as separately scoped engagements at preferred partner rates.</div>
+      <div class="scope-item">
+        <div style="flex:1;">
+          <div class="scope-label">Major Call Flow Overhauls</div>
+          <div class="scope-desc">Designing or implementing significant structural changes to existing call flow configurations.</div>
+        </div>
+        <div class="scope-tag">Separate SOW</div>
+      </div>
+      <div class="scope-item">
+        <div style="flex:1;">
+          <div class="scope-label">New Integration Deployments</div>
+          <div class="scope-desc">Full deployment or integration of new solutions, such as transitioning to a provider contact center platform.</div>
+        </div>
+        <div class="scope-tag">Separate SOW</div>
+      </div>
+    </div>
+
+    <!-- TERM -->
+    <div class="section-header" style="margin-top:28px;">
+      <div class="section-num">${secNum()}</div>
+      <div class="section-title">Term &amp; Renewal</div>
+      <div class="section-divider"></div>
+    </div>
+    <div class="term-panel">
+      <div class="term-dates">
+        <div class="term-date-cell">
+          <div class="term-date-label">Start Date</div>
+          <div class="term-date-val">${startDate}</div>
+        </div>
+        <div class="term-date-cell">
+          <div class="term-date-label">End Date</div>
+          <div class="term-date-val">${endDate}</div>
+        </div>
+        <div class="term-date-cell">
+          <div class="term-date-label">Term Length</div>
+          <div class="term-date-val">${term} Year${term > 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      <div class="term-prose">
+        <p>CloudSupport services are sold to align and co-term with the Customer\u2019s Packet Fusion agreement and/or underlying provider subscription term. Unless otherwise stated in writing, CloudSupport will automatically renew for the duration of the applicable renewal term.</p>
+        <p>This <strong>${term}-year</strong> term will be billed annually at <strong>${fmtFull(calc.annual)}</strong> per year, for a total contract value of <strong>${fmtFull(calc.tcv)}</strong>.${term > 1 ? ` Pricing is subject to escalation upon renewal at ${endDate}.` : ''}</p>
+      </div>
+    </div>
+
+  </div><!-- end doc-body -->
+
+  <!-- SIGNATURE BAND -->
+  <div class="sig-band">
+    <div class="sig-band-title">Authorization &amp; Agreement</div>
+    <div class="sig-grid">
+      <div class="sig-party">
+        <div class="sig-party-name">Packet Fusion, Inc.</div>
+        ${docSigRows()}
+      </div>
+      <div class="sig-party">
+        <div class="sig-party-name">${escHtml(customer)}</div>
+        ${docSigRows()}
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>`;
+}
+
+// ─── buildSignatureHtml ───────────────────────────────────────────────────────
+
+export function buildSignatureHtml(
+  oppName: string,
+  d: OppFormData,
+  calc: OppCalcResult,
+  versionNum: number,
+): string {
+  const type = d.oppType || 'UCaaS + CCaaS';
+  const customer = oppName || '[Customer Name]';
+  const term = d.term || 3;
+  const startDate = fmtDate(d.contractStart);
+  const endDate = fmtDate(d.contractEnd);
+  const users = d.ucaasUsers || 0;
+  const ccaasLic = d.ccaasLicensing || 0;
+  const afterHours = d.afterHoursRate ?? 165;
+  const advRate = d.advancedTaskRate ?? 145;
+  const refNum = `PF-${new Date().getFullYear()}-${String(versionNum).padStart(3, '0')}`;
+  const showUCaaS = type !== 'CCaaS Only';
+  const showCCaaS = type !== 'UCaaS Only';
+  const ucaasTierLabel =
+    users <= 0 ? '\u2014' :
+    users <= 100 ? 'Starter' :
+    users <= 500 ? 'Business' :
+    users <= 2000 ? 'Professional' : 'Enterprise';
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const ucaasLineItem = (showUCaaS && users > 0) ? `
+      <div class="sd-line-item">
+        <div class="sdli-desc">
+          <div class="sdli-name">UCaaS CloudSupport \u2014 ${ucaasTierLabel}${calc.ucaasOverridden ? ' <span style="font-size:10px;font-weight:600;color:#007d6e;background:#e8f5f2;border:1px solid #b2dfdb;border-radius:3px;padding:1px 6px;margin-left:4px;">custom</span>' : ''}</div>
+          <div class="sdli-note">UCaaS CloudSupport \u00b7 ${users.toLocaleString('en-US')} active seats</div>
+        </div>
+        <div class="sdli-qty">${users.toLocaleString('en-US')} seats</div>
+        <div class="sdli-price">${fmtFull(calc.ucaasSup)}/yr</div>
+      </div>
+  ` : '';
+
+  const ccaasLineItem = (showCCaaS && ccaasLic > 0) ? `
+      <div class="sd-line-item">
+        <div class="sdli-desc">
+          <div class="sdli-name">CCaaS CloudSupport \u2014 Contact Center</div>
+          <div class="sdli-note">CCaaS CloudSupport</div>
+        </div>
+        <div class="sdli-qty">\u2014</div>
+        <div class="sdli-price">${fmtFull(calc.ccaasSup)}/yr</div>
+      </div>
+  ` : '';
+
+  const customLineItems = (d.customLines && d.customLines.length > 0)
+    ? d.customLines.map(l => `
+      <div class="sd-line-item">
+        <div class="sdli-desc">
+          <div class="sdli-name">${escHtml(l.label)}</div>
+          <div class="sdli-note">Custom pricing adjustment</div>
+        </div>
+        <div class="sdli-qty">\u2014</div>
+        <div class="sdli-price">${fmtFull(l.price || 0)}/yr</div>
+      </div>`).join('')
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudSupport Agreement \u2014 ${escHtml(customer)}</title>
+  ${sharedStyles()}
+</head>
+<body>
+<div class="sig-doc">
+  <div class="sd-top-rule"></div>
+
+  <div class="sd-header">
+    <div>
+      <img src="${LOGO_SRC}" alt="PacketFusion" style="height:44px;width:auto;display:block;">
+    </div>
+    <div class="sd-doc-info">
+      <div class="sd-doc-label">CloudSupport Agreement</div>
+      <div class="sd-doc-ref">${refNum} &nbsp;\u00b7&nbsp; ${today}</div>
+    </div>
+  </div>
+
+  <div class="sd-parties">
+    <div class="sd-party">
+      <div class="sd-party-role">Service Provider</div>
+      <div class="sd-party-name">Packet Fusion, Inc.</div>
+      <div class="sd-party-sub">CloudSupport Services</div>
+    </div>
+    <div class="sd-party">
+      <div class="sd-party-role">Customer</div>
+      <div class="sd-party-name">${escHtml(customer)}</div>
+      <div class="sd-party-sub">${escHtml(type)}</div>
+    </div>
+  </div>
+
+  <div class="sd-body">
+
+    <p class="sd-recital">
+      This CloudSupport Agreement (\u201cAgreement\u201d) is entered into between <strong>Packet Fusion, Inc.</strong> (\u201cProvider\u201d) and <strong>${escHtml(customer)}</strong> (\u201cCustomer\u201d). Provider agrees to deliver the CloudSupport services described herein for the term and pricing set forth below, in accordance with the terms of the Customer\u2019s underlying Packet Fusion Master Services Agreement.
+    </p>
+
+    <div class="sd-section-label">Service &amp; Pricing Schedule</div>
+
+    ${ucaasLineItem}
+    ${ccaasLineItem}
+    ${customLineItems}
+
+    <div class="sd-totals">
+      <div class="sd-total-row">
+        <span class="sd-total-label">Annual CloudSupport Investment</span>
+        <span class="sd-total-val">${fmtFull(calc.annual)}</span>
+      </div>
+      <div class="sd-total-row">
+        <span class="sd-total-label">Term Length</span>
+        <span class="sd-total-val" style="font-family:'IBM Plex Sans',sans-serif;">${term} Year${term > 1 ? 's' : ''} &nbsp;(${startDate} \u2013 ${endDate})</span>
+      </div>
+      <div class="sd-total-row grand">
+        <span class="sd-total-label">Total Contract Value</span>
+        <span class="sd-total-val">${fmtFull(calc.tcv)}</span>
+      </div>
+    </div>
+
+    <div class="sd-section-label" style="margin-top:26px;">Support Coverage</div>
+    <ul class="sd-coverage-list">
+      <li><span class="sd-cov-num">01</span><span class="sd-cov-body"><strong>Business Hours MACs (7am\u20135pm PST)</strong> \u2014 Simple adds, moves, and changes at no additional charge during standard business hours.</span></li>
+      <li><span class="sd-cov-num">02</span><span class="sd-cov-body"><strong>After-Hours Labor at ${fmtFull(afterHours)}/hr</strong> \u2014 Discounted rate for support engagements over 30 minutes outside business hours.</span></li>
+      <li><span class="sd-cov-num">03</span><span class="sd-cov-body"><strong>Advanced Task Rate at ${fmtFull(advRate)}/hr</strong> \u2014 Preferred pricing for new call flows, integrations, API work, and advanced configurations.</span></li>
+      <li><span class="sd-cov-num">04</span><span class="sd-cov-body"><strong>SLA Guarantees</strong> \u2014 4-hour response for standard requests; 30-minute response for priority or emergency issues.</span></li>
+      <li><span class="sd-cov-num">05</span><span class="sd-cov-body"><strong>Customer Portal Access</strong> \u2014 Ticket submission, case history, and real-time status updates via the Packet Fusion portal.</span></li>
+      <li><span class="sd-cov-num">06</span><span class="sd-cov-body"><strong>Quarterly Optimization &amp; Coaching</strong> \u2014 System reviews, call flow audits, end-user training, and strategic planning sessions.</span></li>
+      <li><span class="sd-cov-num">07</span><span class="sd-cov-body"><strong>Manufacturer Support Access</strong> \u2014 Option to engage directly with manufacturer support alongside Packet Fusion coverage.</span></li>
+    </ul>
+
+    <div class="sd-section-label" style="margin-top:26px;">Outside Scope of Agreement</div>
+    <div class="sd-scope">
+      <p style="font-size:12px;color:#64748b;margin-bottom:10px;">The following are available as separately scoped engagements at preferred partner rates:</p>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12.5px;color:#374151;">
+          <span style="width:18px;height:18px;border-radius:50%;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#94a3b8;flex-shrink:0;margin-top:1px;">1</span>
+          <div><strong style="color:#1e293b;">Major Call Flow Overhauls</strong> \u2014 Significant structural redesign of existing call flow configurations.</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;font-size:12.5px;color:#374151;">
+          <span style="width:18px;height:18px;border-radius:50%;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#94a3b8;flex-shrink:0;margin-top:1px;">2</span>
+          <div><strong style="color:#1e293b;">New Integration or Solution Deployments</strong> \u2014 Full deployment of new platforms, such as transitioning to a new contact center solution.</div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#94a3b8;margin-top:10px;margin-bottom:0;">Contact your Packet Fusion account team for a scoped proposal on either item.</p>
+    </div>
+
+    <div class="sd-section-label" style="margin-top:26px;">Term &amp; Renewal</div>
+    <div class="sd-term">
+      <p>This Agreement co-terms with Customer\u2019s Packet Fusion Master Services Agreement and/or underlying provider subscription. Unless cancelled in writing, CloudSupport will automatically renew for successive terms at the then-current renewal rate.</p>
+      <div class="sd-term-box">
+        This ${term}-year Agreement is billed annually at <strong>${fmtFull(calc.annual)}</strong> per year, for a total contract value of <strong>${fmtFull(calc.tcv)}</strong>. Term: ${startDate} through ${endDate}.${term > 1 ? ' Pricing is subject to escalation upon renewal.' : ''}
+      </div>
+    </div>
+
+    <div class="sd-sig-section">
+      <p class="sd-sig-preamble">By signing below, each party agrees to the terms of this CloudSupport Agreement. This Agreement is legally binding upon execution by both parties and is incorporated into the Customer\u2019s Master Services Agreement with Packet Fusion, Inc.</p>
+      <div class="sd-sig-grid">
+        <div>
+          <div class="sd-sig-party-label">Service Provider</div>
+          <div class="sd-sig-party-name">Packet Fusion, Inc.</div>
+          ${sdSigFields()}
+        </div>
+        <div>
+          <div class="sd-sig-party-label">Customer</div>
+          <div class="sd-sig-party-name">${escHtml(customer)}</div>
+          ${sdSigFields()}
+        </div>
+      </div>
+      <div class="sd-footer">
+        Packet Fusion, Inc. &nbsp;\u00b7&nbsp; CloudSupport Agreement &nbsp;\u00b7&nbsp; ${refNum} &nbsp;\u00b7&nbsp; ${fmtFull(calc.annual)}/yr &nbsp;\u00b7&nbsp; ${term}-Year Term<br>
+        This document is confidential and intended solely for the named parties.
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+// ─── buildMsoHtml ─────────────────────────────────────────────────────────────
+
+export function buildMsoHtml(
+  oppName: string,
+  d: OppFormData,
+  calc: OppCalcResult,
+  versionNum: number,
+): string {
+  const type = d.oppType || 'UCaaS + CCaaS';
+  const customer = oppName || '[Customer Name]';
+  const term = d.term || 3;
+  const startDate = fmtDate(d.contractStart);
+  const endDate = fmtDate(d.contractEnd);
+  const users = d.ucaasUsers || 0;
+  const ccaasLic = d.ccaasLicensing || 0;
+  const refNum = `PF-MSO-${new Date().getFullYear()}-${String(versionNum).padStart(3, '0')}`;
+  const showUCaaS = type !== 'CCaaS Only';
+  const showCCaaS = type !== 'UCaaS Only';
+  const ucaasTierLabel =
+    users <= 0 ? '\u2014' :
+    users <= 100 ? 'Starter' :
+    users <= 500 ? 'Business' :
+    users <= 2000 ? 'Professional' : 'Enterprise';
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const msoFeatures: [string, string][] = [
+    ['Named Customer Success Manager', 'Assigned on Day 1 \u2014 owns your account, leads every QBR, and is your first call for anything.'],
+    ['24/7/365 Direct Engineer Access', 'Dedicated phone line routes to certified engineers \u2014 never a helpdesk queue.'],
+    ['Proactive Health Checks', 'Ongoing monitoring of call quality, utilization, and configuration integrity.'],
+    ['Monthly Executive Reporting', 'Ticket trends, MAC volumes, and platform metrics delivered monthly.'],
+    ['MACD Management', 'Day-to-day adds, moves, changes, and deletes handled by certified engineers.'],
+    ['Quarterly Business Reviews', 'Strategic roadmap sessions aligning your platform to evolving business objectives.'],
+    ['Vendor Coordination', 'We own the relationship with Zoom and your carrier \u2014 escalations handled on your behalf.'],
+    ['SLA-Backed Response', 'P1: 15 min \u00b7 P2: 1 hr \u00b7 P3: 4 hrs \u00b7 24/7/365. In writing, always.'],
+  ];
+
+  const ucaasLineItem = (showUCaaS && users > 0) ? `
+      <div class="sd-line-item">
+        <div class="sdli-desc">
+          <div class="sdli-name">UCaaS CloudSupport \u2014 ${ucaasTierLabel}</div>
+          <div class="sdli-note">UCaaS CloudSupport \u00b7 ${users.toLocaleString('en-US')} active seats</div>
+        </div>
+        <div class="sdli-qty">${users.toLocaleString('en-US')} seats</div>
+        <div class="sdli-price">${fmtFull(calc.ucaasSup)}/yr</div>
+      </div>
+  ` : '';
+
+  const ccaasLineItem = (showCCaaS && ccaasLic > 0) ? `
+      <div class="sd-line-item">
+        <div class="sdli-desc">
+          <div class="sdli-name">CCaaS CloudSupport \u2014 Contact Center</div>
+          <div class="sdli-note">CCaaS CloudSupport</div>
+        </div>
+        <div class="sdli-qty">\u2014</div>
+        <div class="sdli-price">${fmtFull(calc.ccaasSup)}/yr</div>
+      </div>
+  ` : '';
+
+  const msoLineItem = calc.msoEnabled ? `
+      <div class="sd-line-item" style="border-left:3px solid #00b8a0;padding-left:12px;">
+        <div class="sdli-desc">
+          <div class="sdli-name" style="color:#007d6e;">CloudSupport<sup style="font-size:8px;">+</sup> MSO Add-On</div>
+          <div class="sdli-note">Managed Services \u2014 Named CSM \u00b7 24/7 Access \u00b7 QBRs \u00b7 SLA-Backed</div>
+        </div>
+        <div class="sdli-qty">\u2014</div>
+        <div class="sdli-price" style="color:#007d6e;">${fmtFull(calc.msoSup)}/yr</div>
+      </div>
+  ` : '';
+
+  const customLineItems = (d.customLines && d.customLines.length > 0)
+    ? d.customLines.map(l => `
+      <div class="sd-line-item">
+        <div class="sdli-desc">
+          <div class="sdli-name">${escHtml(l.label)}</div>
+          <div class="sdli-note">Custom pricing adjustment</div>
+        </div>
+        <div class="sdli-qty">\u2014</div>
+        <div class="sdli-price">${fmtFull(l.price || 0)}/yr</div>
+      </div>`).join('')
+    : '';
+
+  const msoFeaturesHtml = msoFeatures.map(([title, desc]) => `
+      <div style="background:#f8fafc;border:1px solid #e4eaf2;border-radius:8px;padding:12px 14px;">
+        <div style="font-size:12px;font-weight:700;color:#0d1b2e;margin-bottom:4px;">${title}</div>
+        <div style="font-size:11.5px;color:#64748b;line-height:1.5;">${desc}</div>
+      </div>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudSupport\u207a MSO Agreement \u2014 ${escHtml(customer)}</title>
+  ${sharedStyles()}
+</head>
+<body>
+<div class="sig-doc">
+  <div class="sd-top-rule" style="background:linear-gradient(90deg,#0d1b2e 60%,#00b8a0 100%);height:5px;"></div>
+
+  <div class="sd-header">
+    <div>
+      <img src="${LOGO_SRC}" alt="PacketFusion" style="height:44px;width:auto;display:block;">
+    </div>
+    <div class="sd-doc-info">
+      <div class="sd-doc-label" style="color:#007d6e;">CloudSupport<sup style="font-size:8px;">+</sup> Managed Services Agreement</div>
+      <div class="sd-doc-ref">${refNum} &nbsp;\u00b7&nbsp; ${today}</div>
+    </div>
+  </div>
+
+  <div class="sd-parties">
+    <div class="sd-party">
+      <div class="sd-party-role">Service Provider</div>
+      <div class="sd-party-name">Packet Fusion, Inc.</div>
+      <div class="sd-party-sub">CloudSupport\u207a Managed Services</div>
+    </div>
+    <div class="sd-party">
+      <div class="sd-party-role">Customer</div>
+      <div class="sd-party-name">${escHtml(customer)}</div>
+      <div class="sd-party-sub">${escHtml(type)}${calc.msoEnabled ? ' + MSO' : ''}</div>
+    </div>
+  </div>
+
+  <div class="sd-body">
+
+    <p class="sd-recital">
+      This CloudSupport<sup style="font-size:9px;">+</sup> Managed Services Agreement (\u201cAgreement\u201d) is entered into between <strong>Packet Fusion, Inc.</strong> (\u201cProvider\u201d) and <strong>${escHtml(customer)}</strong> (\u201cCustomer\u201d). Provider agrees to deliver the CloudSupport base services plus the MSO Add-On described herein for the term and pricing set forth below. The MSO Add-On elevates reactive support into a fully managed, SLA-backed environment built around Customer\u2019s business goals across UCaaS, CCaaS, voice, and integrations.
+    </p>
+
+    <div class="sd-section-label">What\u2019s Included \u2014 MSO Add-On</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+      ${msoFeaturesHtml}
+    </div>
+
+    <div class="sd-section-label">SLA Response Matrix</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:20px;">
+      <thead>
+        <tr style="background:#0d1b2e;color:#fff;">
+          <th style="padding:10px 14px;text-align:left;font-weight:600;letter-spacing:0.04em;">Priority</th>
+          <th style="padding:10px 14px;text-align:left;font-weight:600;letter-spacing:0.04em;">Issue Type</th>
+          <th style="padding:10px 14px;text-align:center;font-weight:600;letter-spacing:0.04em;">Response</th>
+          <th style="padding:10px 14px;text-align:center;font-weight:600;letter-spacing:0.04em;">Resolution Target</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:11px 14px;"><span style="display:inline-block;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">P1 Critical</span></td>
+          <td style="padding:11px 14px;color:#374151;">Service outage \u2014 platform-wide issue</td>
+          <td style="padding:11px 14px;text-align:center;font-weight:700;color:#0d1b2e;font-family:'IBM Plex Mono',monospace;">15 min</td>
+          <td style="padding:11px 14px;text-align:center;color:#64748b;">Escalate with executive alignment</td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;background:#fafbfc;">
+          <td style="padding:11px 14px;"><span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">P2 High</span></td>
+          <td style="padding:11px 14px;color:#374151;">Significant degradation or multiple users affected</td>
+          <td style="padding:11px 14px;text-align:center;font-weight:700;color:#0d1b2e;font-family:'IBM Plex Mono',monospace;">1 hr</td>
+          <td style="padding:11px 14px;text-align:center;color:#64748b;">1 business day</td>
+        </tr>
+        <tr>
+          <td style="padding:11px 14px;"><span style="display:inline-block;background:#e8f5f2;color:#007d6e;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;">P3 Normal</span></td>
+          <td style="padding:11px 14px;color:#374151;">General issues, how-to questions</td>
+          <td style="padding:11px 14px;text-align:center;font-weight:700;color:#0d1b2e;font-family:'IBM Plex Mono',monospace;">4 hrs</td>
+          <td style="padding:11px 14px;text-align:center;color:#64748b;">3 business days</td>
+        </tr>
+      </tbody>
+      <tfoot><tr><td colspan="4" style="padding:8px 14px;font-size:11px;color:#94a3b8;font-style:italic;background:#f8fafc;border-top:1px solid #e4eaf2;">All response times apply 24/7/365. Resolution targets represent goals; actual resolution may vary based on provider involvement.</td></tr></tfoot>
+    </table>
+
+    <div class="sd-section-label">Service &amp; Pricing Schedule</div>
+
+    ${ucaasLineItem}
+    ${ccaasLineItem}
+    ${msoLineItem}
+    ${customLineItems}
+
+    <div class="sd-totals">
+      <div class="sd-total-row">
+        <span class="sd-total-label">Annual CloudSupport\u207a Investment</span>
+        <span class="sd-total-val">${fmtFull(calc.annual)}</span>
+      </div>
+      <div class="sd-total-row">
+        <span class="sd-total-label">Term Length</span>
+        <span class="sd-total-val" style="font-family:'IBM Plex Sans',sans-serif;">${term} Year${term > 1 ? 's' : ''} &nbsp;(${startDate} \u2013 ${endDate})</span>
+      </div>
+      <div class="sd-total-row grand">
+        <span class="sd-total-label">Total Contract Value</span>
+        <span class="sd-total-val">${fmtFull(calc.tcv)}</span>
+      </div>
+    </div>
+
+    <div class="sd-section-label" style="margin-top:26px;">Term &amp; Renewal</div>
+    <div class="sd-term">
+      <p>This Agreement co-terms with Customer\u2019s Packet Fusion Master Services Agreement and/or underlying provider subscription. Unless cancelled in writing, CloudSupport\u207a will automatically renew for successive terms at the then-current renewal rate.</p>
+      <div class="sd-term-box">
+        This ${term}-year Agreement is billed annually at <strong>${fmtFull(calc.annual)}</strong> per year, for a total contract value of <strong>${fmtFull(calc.tcv)}</strong>. Term: ${startDate} through ${endDate}.${term > 1 ? ' Pricing is subject to escalation upon renewal.' : ''}
+      </div>
+    </div>
+
+    <div class="sd-sig-section">
+      <p class="sd-sig-preamble">By signing below, each party agrees to the terms of this CloudSupport\u207a Managed Services Agreement. This Agreement is legally binding upon execution by both parties and is incorporated into the Customer\u2019s Master Services Agreement with Packet Fusion, Inc.</p>
+      <div class="sd-sig-grid">
+        <div>
+          <div class="sd-sig-party-label">Service Provider</div>
+          <div class="sd-sig-party-name">Packet Fusion, Inc.</div>
+          ${sdSigFields()}
+        </div>
+        <div>
+          <div class="sd-sig-party-label">Customer</div>
+          <div class="sd-sig-party-name">${escHtml(customer)}</div>
+          ${sdSigFields()}
+        </div>
+      </div>
+      <div class="sd-footer">
+        Packet Fusion, Inc. &nbsp;\u00b7&nbsp; CloudSupport\u207a MSO Agreement &nbsp;\u00b7&nbsp; ${refNum} &nbsp;\u00b7&nbsp; ${fmtFull(calc.annual)}/yr &nbsp;\u00b7&nbsp; ${term}-Year Term<br>
+        This document is confidential and intended solely for the named parties.
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>`;
+}

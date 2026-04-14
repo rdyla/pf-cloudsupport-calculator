@@ -1,0 +1,310 @@
+/**
+ * graphService.ts — Microsoft Graph + Dynamics SharePoint helpers.
+ *
+ * Ported from FusionFlow. Uses the Dynamics CRM sharepointdocumentlocations
+ * table to find the correct SharePoint folder for a given CRM record ID,
+ * then performs file operations via the Microsoft Graph API.
+ *
+ * Requires the Azure app registration to have:
+ *   - Graph:  Sites.ReadWrite.All (application permission)
+ *   - Dynamics: user_impersonation (or Dynamics CRM access)
+ *   - SharePoint app-only auth enabled on the tenant:
+ *       Set-PnPTenant -DisableCustomAppAuthentication $false
+ */
+
+import type { Env } from '../types';
+
+const GRAPH_API_BASE   = 'https://graph.microsoft.com/v1.0';
+const DYNAMICS_API_BASE = 'https://packetfusioncrm.crm.dynamics.com/api/data/v9.2';
+const GRAPH_TOKEN_KEY   = 'graph:token';
+const DYNAMICS_TOKEN_KEY = 'dynamics_token';
+
+type TokenCache = { access_token: string; expires_at: number };
+
+// ── Token helpers ─────────────────────────────────────────────────────────────
+
+async function fetchToken(env: Env, scope: string, cacheKey: string): Promise<string> {
+  const cached = await env.SESSION_KV.get<TokenCache>(cacheKey, 'json');
+  if (cached && cached.expires_at > Date.now() + 60_000) return cached.access_token;
+
+  const res = await fetch(
+    `https://login.microsoftonline.com/${env.AZURE_TENANT_ID}/oauth2/v2.0/token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type:    'client_credentials',
+        client_id:     env.AZURE_CLIENT_ID,
+        client_secret: env.AZURE_CLIENT_SECRET,
+        scope,
+      }),
+    }
+  );
+
+  if (!res.ok) throw new Error(`Token fetch failed (${scope}): ${res.status} ${await res.text()}`);
+
+  const data = await res.json() as { access_token: string; expires_in: number };
+  await env.SESSION_KV.put(
+    cacheKey,
+    JSON.stringify({ access_token: data.access_token, expires_at: Date.now() + data.expires_in * 1000 }),
+    { expirationTtl: data.expires_in - 60 }
+  );
+  return data.access_token;
+}
+
+export function getGraphToken(env: Env)    { return fetchToken(env, 'https://graph.microsoft.com/.default', GRAPH_TOKEN_KEY); }
+export function getDynamicsToken(env: Env) { return fetchToken(env, `${env.DYNAMICS_URL}/.default`, DYNAMICS_TOKEN_KEY); }
+
+// ── Graph helpers ─────────────────────────────────────────────────────────────
+
+async function graphGet<T>(token: string, path: string): Promise<T> {
+  const res = await fetch(`${GRAPH_API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Graph API ${res.status} ${path}: ${body}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function graphPut<T>(token: string, path: string, body: ArrayBuffer, contentType: string): Promise<T> {
+  const res = await fetch(`${GRAPH_API_BASE}${path}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': contentType },
+    body,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Graph PUT ${res.status} ${path}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// ── SharePoint path resolution ────────────────────────────────────────────────
+//
+// 1. GET /sites/{hostname}       → site ID
+// 2. GET /sites/{id}/drives      → find document library by name (first URL segment)
+// 3. /drives/{id}/root:/{path}/  → list / upload / delete
+
+async function resolveSharePointPath(
+  token: string,
+  url: string
+): Promise<{ driveId: string; segments: string[] }> {
+  const parsed = new URL(url);
+  const hostname = parsed.hostname;
+
+  const allSegments = parsed.pathname
+    .split('/')
+    .filter(Boolean)
+    .map((s) => { try { return decodeURIComponent(s); } catch { return s; } });
+
+  if (allSegments.length === 0) throw new Error(`SharePoint URL has no path: ${url}`);
+
+  const libraryName   = allSegments[0];
+  const pathWithinDrive = allSegments.slice(1);
+
+  const site = await graphGet<{ id: string }>(token, `/sites/${hostname}`);
+
+  const drivesRes = await graphGet<{ value: Array<{ id: string; name: string }> }>(
+    token, `/sites/${site.id}/drives`
+  );
+
+  const drive = drivesRes.value.find(
+    (d) => d.name.toLowerCase() === libraryName.toLowerCase()
+  );
+
+  if (!drive) {
+    const names = drivesRes.value.map((d) => d.name).join(', ');
+    throw new Error(`Document library "${libraryName}" not found on ${hostname}. Available: ${names}`);
+  }
+
+  return { driveId: drive.id, segments: pathWithinDrive };
+}
+
+function graphPath(segments: string[]): string {
+  return segments.map(encodeURIComponent).join('/');
+}
+
+// ── Dynamics document location resolution ────────────────────────────────────
+
+type DynSPLocation = {
+  sharepointdocumentlocationid: string;
+  name: string;
+  relativeurl: string;
+  absoluteurl: string | null;
+  _parentsiteorlocation_value: string | null;
+};
+
+type DynSPSite = {
+  sharepointsiteid: string;
+  absoluteurl: string;
+};
+
+async function dynamicsGet<T>(token: string, path: string): Promise<T> {
+  const res = await fetch(`${DYNAMICS_API_BASE}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'OData-MaxVersion': '4.0',
+      'OData-Version': '4.0',
+      Accept: 'application/json',
+      Prefer: 'odata.include-annotations=OData.Community.Display.V1.FormattedValue',
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Dynamics API ${res.status} ${path}: ${body}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function buildAbsoluteUrl(
+  token: string,
+  location: DynSPLocation,
+  visited = new Set<string>()
+): Promise<string | null> {
+  if (location.absoluteurl) return location.absoluteurl;
+  if (!location._parentsiteorlocation_value) return null;
+  if (visited.has(location._parentsiteorlocation_value)) return null;
+  visited.add(location._parentsiteorlocation_value);
+
+  try {
+    const res = await dynamicsGet<{ value: DynSPLocation[] }>(
+      token,
+      `/sharepointdocumentlocations?$filter=sharepointdocumentlocationid eq ${location._parentsiteorlocation_value}&$select=sharepointdocumentlocationid,relativeurl,absoluteurl,_parentsiteorlocation_value`
+    );
+    const parent = res.value[0];
+    if (parent) {
+      const parentUrl = await buildAbsoluteUrl(token, parent, visited);
+      return parentUrl ? `${parentUrl.replace(/\/$/, '')}/${location.relativeurl}` : null;
+    }
+  } catch { /* might be a site, not a location */ }
+
+  try {
+    const res = await dynamicsGet<{ value: DynSPSite[] }>(
+      token,
+      `/sharepointsites?$filter=sharepointsiteid eq ${location._parentsiteorlocation_value}&$select=absoluteurl`
+    );
+    const site = res.value[0];
+    if (site?.absoluteurl) {
+      return `${site.absoluteurl.replace(/\/$/, '')}/${location.relativeurl}`;
+    }
+  } catch { /* ignore */ }
+
+  return null;
+}
+
+export type SPLocation = { id: string; name: string; absoluteUrl: string };
+export type SPFile = {
+  id: string;
+  name: string;
+  size: number | null;
+  lastModified: string | null;
+  webUrl: string;
+  downloadUrl: string | null;
+  isFolder: boolean;
+  mimeType: string | null;
+};
+
+/**
+ * Returns the SharePoint document folders linked to a Dynamics CRM record.
+ * Uses the CRM's own sharepointdocumentlocations — the same folders you see
+ * in the "Documents" tab of any Account/Opportunity in CRM.
+ */
+export async function getSharePointLocations(env: Env, recordId: string): Promise<SPLocation[]> {
+  // Let token errors propagate — caller will see the real error message
+  const token = await getDynamicsToken(env);
+
+  const res = await dynamicsGet<{ value: DynSPLocation[] }>(
+    token,
+    `/sharepointdocumentlocations?$filter=_regardingobjectid_value eq ${recordId}` +
+    `&$select=sharepointdocumentlocationid,name,relativeurl,absoluteurl,_parentsiteorlocation_value` +
+    `&$orderby=name asc`
+  );
+
+  const locations: SPLocation[] = [];
+  for (const loc of res.value) {
+    try {
+      const absoluteUrl = await buildAbsoluteUrl(token, loc);
+      if (absoluteUrl) {
+        locations.push({ id: loc.sharepointdocumentlocationid, name: loc.name, absoluteUrl });
+      }
+    } catch (err) {
+      console.error('getSharePointLocations: buildAbsoluteUrl error for', loc.name, err instanceof Error ? err.message : err);
+    }
+  }
+  return locations;
+}
+
+type GraphDriveItem = {
+  id: string;
+  name: string;
+  size?: number;
+  lastModifiedDateTime?: string;
+  webUrl?: string;
+  '@microsoft.graph.downloadUrl'?: string;
+  folder?: object;
+  file?: { mimeType?: string };
+};
+
+function mapDriveItem(item: GraphDriveItem): SPFile {
+  return {
+    id: item.id,
+    name: item.name,
+    size: item.size ?? null,
+    lastModified: item.lastModifiedDateTime ?? null,
+    webUrl: item.webUrl ?? '',
+    downloadUrl: item['@microsoft.graph.downloadUrl'] ?? null,
+    isFolder: !!item.folder,
+    mimeType: item.file?.mimeType ?? null,
+  };
+}
+
+export async function listSharePointFiles(env: Env, folderAbsoluteUrl: string): Promise<SPFile[]> {
+  const token = await getGraphToken(env);
+  const { driveId, segments } = await resolveSharePointPath(token, folderAbsoluteUrl);
+
+  const encodedPath = graphPath(segments);
+  const apiPath = encodedPath
+    ? `/drives/${driveId}/root:/${encodedPath}:/children?$orderby=name asc`
+    : `/drives/${driveId}/root/children?$orderby=name asc`;
+
+  const res = await graphGet<{ value: GraphDriveItem[] }>(token, apiPath);
+  return res.value.map(mapDriveItem);
+}
+
+export async function uploadToSharePoint(
+  env: Env,
+  folderAbsoluteUrl: string,
+  filename: string,
+  content: ArrayBuffer,
+  mimeType: string
+): Promise<SPFile> {
+  const token = await getGraphToken(env);
+  const { driveId, segments } = await resolveSharePointPath(token, folderAbsoluteUrl);
+
+  const encodedPath = graphPath(segments);
+  const uploadPath = encodedPath
+    ? `/drives/${driveId}/root:/${encodedPath}/${encodeURIComponent(filename)}:/content`
+    : `/drives/${driveId}/root:/${encodeURIComponent(filename)}:/content`;
+
+  const item = await graphPut<GraphDriveItem>(token, uploadPath, content, mimeType);
+  return mapDriveItem(item);
+}
+
+export async function deleteSharePointFile(env: Env, fileWebUrl: string): Promise<void> {
+  const token = await getGraphToken(env);
+  const { driveId, segments } = await resolveSharePointPath(token, fileWebUrl);
+
+  const encodedPath = graphPath(segments);
+  const item = await graphGet<{ id: string }>(token, `/drives/${driveId}/root:/${encodedPath}`);
+
+  const res = await fetch(`${GRAPH_API_BASE}/drives/${driveId}/items/${item.id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Graph DELETE ${res.status}: ${await res.text().catch(() => '')}`);
+  }
+}
