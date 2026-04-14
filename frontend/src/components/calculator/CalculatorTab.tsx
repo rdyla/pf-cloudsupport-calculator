@@ -3,6 +3,8 @@ import { useApiToken } from '../../auth/useApiToken';
 import { oppsApi } from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
 import { calcSupport, fmt, DEFAULT_FORM_DATA } from '../../lib/calcSupport';
+import { MSO_TIERS, getMsoTier } from '../../lib/msoTiers';
+import type { MsoTierKey } from '../../lib/msoTiers';
 import type { OppFormData, Opportunity } from '../../types';
 
 interface Props {
@@ -24,7 +26,21 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
     setForm(latest?.data ?? DEFAULT_FORM_DATA);
   }, [opp.id]);
 
+  // Auto-compute contract end date from start + term
+  useEffect(() => {
+    if (!form.contractStart) return;
+    const start = new Date(form.contractStart + 'T12:00:00');
+    const end = new Date(start);
+    end.setFullYear(end.getFullYear() + (Number(form.term) || 1));
+    end.setDate(end.getDate() - 1);
+    const computed = end.toISOString().split('T')[0];
+    if (computed !== form.contractEnd) {
+      setForm(prev => ({ ...prev, contractEnd: computed }));
+    }
+  }, [form.contractStart, form.term]);
+
   const calc = calcSupport(form);
+  const selectedTier = getMsoTier(form.msoTier || '');
 
   function set<K extends keyof OppFormData>(key: K, value: OppFormData[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -32,6 +48,11 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
 
   function setOverride(key: 'ovrUcaas' | 'ovrCcaas' | 'ovrImpl' | 'ovrMso', val: string) {
     set(key, val === '' ? null : Number(val));
+  }
+
+  function applyTier(key: string) {
+    const tier = getMsoTier(key);
+    setForm(prev => ({ ...prev, msoTier: key, msoFee: tier ? tier.fee : 0 }));
   }
 
   function addCustomLine() {
@@ -116,24 +137,78 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
               onChange={v => set('term', Number(v))} />
             <DateField label="Contract Start" value={form.contractStart}
               onChange={v => set('contractStart', v)} />
-            <DateField label="Contract End" value={form.contractEnd}
+            <DateField label="Contract End (auto)" value={form.contractEnd}
               onChange={v => set('contractEnd', v)} />
           </div>
 
-          {/* MSO */}
-          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+        </div>
+
+        {/* MSO */}
+        <div style={{ ...cardStyle, marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <input type="checkbox" id="mso" checked={form.msoEnabled}
-              onChange={e => set('msoEnabled', e.target.checked)}
+              onChange={e => {
+                const checked = e.target.checked;
+                setForm(prev => ({
+                  ...prev,
+                  msoEnabled: checked,
+                  ...(checked ? {} : { msoTier: '', msoFee: 0 }),
+                }));
+              }}
               style={{ width: 16, height: 16, cursor: 'pointer' }} />
-            <label htmlFor="mso" style={{ fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer' }}>
-              Include MSO
+            <label htmlFor="mso" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+              Include CloudSupport⁺ MSO
             </label>
-            {form.msoEnabled && (
-              <InputField label="" value={form.msoFee}
-                onChange={v => set('msoFee', Number(v))}
-                placeholder="Monthly MSO fee ($)" style={{ flex: 1, marginBottom: 0 }} />
-            )}
           </div>
+
+          {form.msoEnabled && (
+            <div style={{ marginTop: 14 }}>
+              {/* Tier selector */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Engagement Tier
+                </label>
+                <select
+                  value={form.msoTier}
+                  onChange={e => applyTier(e.target.value)}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  <option value="">— Select a tier —</option>
+                  {(Object.entries(MSO_TIERS) as [MsoTierKey, typeof MSO_TIERS[MsoTierKey]][]).map(([key, t]) => (
+                    <option key={key} value={key}>
+                      {t.label} — {t.engineer} · ~${(t.fee / 1000).toFixed(0)}k/yr
+                    </option>
+                  ))}
+                  <option value="custom">Custom — Enter fee manually</option>
+                </select>
+              </div>
+
+              {/* Tier description card */}
+              {selectedTier && form.msoTier !== 'custom' && (
+                <div style={{ marginBottom: 10, padding: '10px 14px', background: 'rgba(0,184,160,0.05)', border: '1px solid rgba(0,184,160,0.18)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--teal)' }}>{selectedTier.label}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{selectedTier.engineer}</span>
+                  </div>
+                  <div style={{ marginBottom: 2 }}><strong>Allocation:</strong> {selectedTier.allocation}</div>
+                  <div style={{ marginBottom: 2 }}><strong>Best for:</strong> {selectedTier.scope}</div>
+                  <div style={{ marginBottom: 2 }}><strong>SLA:</strong> {selectedTier.sla}</div>
+                  <div><strong>Includes:</strong> {selectedTier.includes}</div>
+                </div>
+              )}
+
+              {/* Annual fee */}
+              <InputField
+                label={`Annual MSO Fee ($)${selectedTier ? ' \u2014 auto-filled' : ''}`}
+                value={form.msoFee || ''}
+                onChange={v => set('msoFee', Number(v))}
+                placeholder="Enter annual fee"
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                All tiers include: Named CSM · 24/7 P1–P3 SLA · MACD · Monthly Reporting · QBR · Vendor Coordination
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Overrides (admin/manager only) */}

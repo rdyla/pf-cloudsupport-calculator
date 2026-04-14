@@ -12,12 +12,12 @@ import { useApiToken } from '../../auth/useApiToken';
 import { sharepointApi, oppsApi } from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
 import { calcSupport } from '../../lib/calcSupport';
-import { buildProposalHtml, buildSignatureHtml, buildMsoHtml } from '../../lib/buildAgreementHtml';
+import { buildProposalHtml, buildSignatureHtml } from '../../lib/buildAgreementHtml';
 import type { Opportunity, SPLocation } from '../../types';
 
 interface Props { opp: Opportunity; }
 
-type Mode = 'proposal' | 'signature' | 'mso';
+type Mode = 'proposal' | 'signature';
 
 export default function AgreementTab({ opp }: Props) {
   const { getToken }  = useApiToken();
@@ -72,8 +72,6 @@ export default function AgreementTab({ opp }: Props) {
   const calc = calcSupport(d);
   const html = mode === 'signature'
     ? buildSignatureHtml(opp.name, d, calc, latest.versionNum)
-    : mode === 'mso'
-    ? buildMsoHtml(opp.name, d, calc, latest.versionNum)
     : buildProposalHtml(opp.name, d, calc, latest.versionNum);
 
   async function handleSaveToSharePoint() {
@@ -134,7 +132,7 @@ export default function AgreementTab({ opp }: Props) {
 
       {/* Mode selector + actions */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-        {(['proposal', 'signature', 'mso'] as Mode[]).map(m => (
+        {(['proposal', 'signature'] as Mode[]).map(m => (
           <button
             key={m}
             onClick={() => setMode(m)}
@@ -145,7 +143,7 @@ export default function AgreementTab({ opp }: Props) {
               color: mode === m ? 'var(--teal)' : 'var(--text-secondary)', fontWeight: 500,
             }}
           >
-            {m === 'proposal' ? 'Proposal' : m === 'signature' ? 'Signature Page' : 'MSO Addendum'}
+            {m === 'proposal' ? 'Proposal' : 'Signature Page'}
           </button>
         ))}
 

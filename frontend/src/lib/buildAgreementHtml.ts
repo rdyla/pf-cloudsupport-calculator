@@ -1,5 +1,6 @@
 import type { OppFormData, OppCalcResult } from '../types';
 import { LOGO_SRC } from './logoData';
+import { getMsoTier } from './msoTiers';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -215,6 +216,114 @@ function docSigRows(): string {
   `;
 }
 
+// ─── buildMsoSection — shared block injected into both Proposal and Sig docs ──
+
+function buildMsoSection(d: OppFormData, calc: OppCalcResult): string {
+  if (!calc.msoEnabled) return '';
+
+  const tierMeta     = getMsoTier(d.msoTier || '');
+  const tierLabel    = tierMeta?.label    ?? 'Custom';
+  const tierEngineer = tierMeta?.engineer ?? 'As scoped per SOW';
+  const tierAlloc    = tierMeta?.allocation ?? '\u2014';
+  const tierSLA      = tierMeta?.sla      ?? 'P1: 15 min \u00b7 P2: 1 hr \u00b7 P3: 4 hrs \u00b7 24/7/365';
+  const tierScope    = tierMeta?.scope    ?? 'As mutually agreed';
+  const tierCoverage = tierMeta?.coverage ?? 'Engineering resource allocation is defined per the agreed scope of work.';
+  const panels       = tierMeta?.panels   ?? [
+    ['Engineer Resource',        'Allocated per agreed scope of work.'],
+    ['MACD Management',          'Adds, moves, changes, and deletes handled by certified engineers.'],
+    ['Platform Configuration',   'Configuration and optimization per environment needs.'],
+    ['Health Monitoring',        'Periodic environment health checks.'],
+    ['Monthly Reporting',        'Environment summary and change log delivered monthly.'],
+    ['Business Reviews',         'Strategic review cadence per engagement scope.'],
+    ['Vendor Coordination',      'Vendor escalation management on your behalf.'],
+    ['Engineering Response SLA', 'P1: 15 min \u00b7 P2: 1 hr \u00b7 P3: 4 hrs \u00b7 24/7/365.'],
+  ];
+
+  type SlaRow = [string, string, string, string, string, string];
+  const slaRows: SlaRow[] = (d.msoTier === 'essentials') ? [
+    ['P1 Critical', 'fee2e2', '991b1b', 'Service outage \u2014 platform-wide',                      '30 min',        'Escalate through team coverage'],
+    ['P2 High',     'fef3c7', '92400e', 'Significant degradation or multiple users affected',        '2 hrs',         '1 business day'],
+    ['P3 Normal',   'e8f5f2', '007d6e', 'General issues, how-to questions',                          'Next bus. day', '3 business days'],
+  ] : [
+    ['P1 Critical', 'fee2e2', '991b1b', 'Service outage \u2014 platform-wide',                      '15 min',        'Escalate with executive alignment'],
+    ['P2 High',     'fef3c7', '92400e', 'Significant degradation or multiple users affected',        '1 hr',          '1 business day'],
+    ['P3 Normal',   'e8f5f2', '007d6e', 'General issues, how-to questions',                          '4 hrs',         '3 business days'],
+  ];
+
+  const hoursNote = d.msoTier === 'essentials'
+    ? 'business hours, with escalation coverage outside those windows'
+    : 'all hours, 24/7/365';
+
+  return `
+    <div style="border-top:3px solid #00b8a0;margin-top:30px;padding-top:22px;">
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;color:#00b8a0;text-transform:uppercase;">CloudSupport\u207a MSO Add-On</div>
+        <div style="flex:1;height:1px;background:rgba(0,184,160,0.2);"></div>
+      </div>
+
+      <div style="background:linear-gradient(135deg,#0d1b2e 0%,#0f2540 100%);border-radius:10px;padding:20px 22px;margin-bottom:18px;color:#fff;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;color:#00b8a0;text-transform:uppercase;margin-bottom:8px;">Engineering Resource Model</div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
+          <span style="font-size:20px;font-weight:800;letter-spacing:-0.02em;">${escHtml(tierLabel)}</span>
+          <span style="font-size:12px;font-weight:600;color:#94c9c3;">${escHtml(tierEngineer)}</span>
+        </div>
+        <div style="font-size:12.5px;color:#cbd5e1;line-height:1.65;margin-bottom:14px;max-width:580px;">${escHtml(tierCoverage)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+          <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:10px 12px;">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;color:#00b8a0;text-transform:uppercase;margin-bottom:4px;">Allocation</div>
+            <div style="font-size:11.5px;color:#e2e8f0;line-height:1.5;">${escHtml(tierAlloc)}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:10px 12px;">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;color:#00b8a0;text-transform:uppercase;margin-bottom:4px;">Best For</div>
+            <div style="font-size:11.5px;color:#e2e8f0;line-height:1.5;">${escHtml(tierScope)}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:7px;padding:10px 12px;">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.08em;color:#00b8a0;text-transform:uppercase;margin-bottom:4px;">Engineering SLA</div>
+            <div style="font-size:11.5px;color:#e2e8f0;line-height:1.5;">${escHtml(tierSLA)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0d1b2e;margin-bottom:10px;">What Your Engineer Delivers</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px;">
+        ${panels.map(([title, desc]) => `
+        <div style="background:#f8fafc;border:1px solid #e4eaf2;border-left:3px solid #00b8a0;border-radius:7px;padding:11px 13px;">
+          <div style="font-size:11.5px;font-weight:700;color:#0d1b2e;margin-bottom:3px;">${title}</div>
+          <div style="font-size:11px;color:#64748b;line-height:1.55;">${desc}</div>
+        </div>`).join('')}
+      </div>
+
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0d1b2e;margin-bottom:10px;">Engineering Response SLA</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;">
+        <thead>
+          <tr style="background:#0d1b2e;color:#fff;">
+            <th style="padding:9px 12px;text-align:left;font-weight:600;letter-spacing:0.04em;">Priority</th>
+            <th style="padding:9px 12px;text-align:left;font-weight:600;letter-spacing:0.04em;">Scenario</th>
+            <th style="padding:9px 12px;text-align:center;font-weight:600;letter-spacing:0.04em;">Engineer Response</th>
+            <th style="padding:9px 12px;text-align:center;font-weight:600;letter-spacing:0.04em;">Resolution Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${slaRows.map(([label, bg, fg, desc, resp, res], i) => `
+          <tr style="border-bottom:1px solid #f1f5f9;${i % 2 === 1 ? 'background:#fafbfc;' : ''}">
+            <td style="padding:10px 12px;"><span style="display:inline-block;background:#${bg};color:#${fg};font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;">${label}</span></td>
+            <td style="padding:10px 12px;color:#374151;">${desc}</td>
+            <td style="padding:10px 12px;text-align:center;font-weight:700;color:#0d1b2e;font-family:'IBM Plex Mono',monospace;">${resp}</td>
+            <td style="padding:10px 12px;text-align:center;color:#64748b;">${res}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr><td colspan="4" style="padding:7px 12px;font-size:10.5px;color:#94a3b8;font-style:italic;background:#f8fafc;border-top:1px solid #e4eaf2;">All response times apply to ${hoursNote}. Engineer response means direct contact \u2014 not a queue or triage step.</td></tr></tfoot>
+      </table>
+
+      <div style="background:#f0faf8;border:1px solid rgba(0,184,160,0.25);border-radius:7px;padding:11px 14px;font-size:12px;color:#374151;line-height:1.6;">
+        The CloudSupport<sup style="font-size:9px;">+</sup> MSO Add-On is billed annually at <strong>${fmtFull(calc.msoSup)}/yr</strong> and co-terms with this Agreement. The engineering resource model (${escHtml(tierLabel)} \u2014 ${escHtml(tierEngineer)}) is committed for the full Agreement term. The MSO Add-On automatically renews with this Agreement unless cancelled in writing at least 30 days prior to renewal.
+      </div>
+
+    </div>
+  `;
+}
+
 // ─── buildProposalHtml ────────────────────────────────────────────────────────
 
 export function buildProposalHtml(
@@ -242,6 +351,7 @@ export function buildProposalHtml(
 
   const showUCaaS = type !== 'CCaaS Only';
   const showCCaaS = type !== 'UCaaS Only';
+  const proposalTierMeta = getMsoTier(d.msoTier || '');
 
   let secN = 0;
   const secNum = () => { secN++; return secN; };
@@ -298,6 +408,26 @@ export function buildProposalHtml(
       </div>
   ` : '';
 
+  const msoSection = calc.msoEnabled ? `
+      <div class="section-header">
+        <div class="section-num">${secNum()}</div>
+        <div class="section-title" style="color:#007d6e;">CloudSupport<sup style="font-size:9px;">+</sup> MSO Add-On \u2014 ${escHtml(proposalTierMeta?.label ?? 'Custom')}</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="pricing-wrap">
+        <table class="pricing-table">
+          <thead><tr><th>MSO Tier</th><th>Engineer Allocation</th><th class="price-col">Annual Investment</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="label-cell">${escHtml(proposalTierMeta?.label ?? 'Custom')}</div><div class="sub-cell">${escHtml(proposalTierMeta?.engineer ?? 'As scoped')}</div></td>
+              <td style="font-size:12px;color:#64748b;">${escHtml(proposalTierMeta?.allocation ?? '\u2014')}</td>
+              <td class="price-col" style="color:#007d6e;">${fmtFull(calc.msoSup)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+  ` : '';
+
   const customSection = (d.customLines && d.customLines.length > 0) ? `
       <div class="section-header">
         <div class="section-num">${secNum()}</div>
@@ -331,7 +461,7 @@ export function buildProposalHtml(
       <img src="${LOGO_SRC}" alt="PacketFusion" style="height:46px;width:auto;display:block;">
     </div>
     <div class="lh-meta">
-      <div class="lh-doc-type">CloudSupport Agreement</div>
+      <div class="lh-doc-type">${calc.msoEnabled ? 'CloudSupport + MSO Agreement' : 'CloudSupport Agreement'}</div>
       <div class="lh-doc-date">${verStr} &nbsp;\u00b7&nbsp; ${today}</div>
     </div>
   </div>
@@ -340,7 +470,7 @@ export function buildProposalHtml(
   <div class="doc-title-band">
     <div class="doc-prepared-for">Prepared for</div>
     <div class="doc-customer-name">${escHtml(customer)}</div>
-    <span class="doc-type-pill">${escHtml(type)}</span>
+    <span class="doc-type-pill">${escHtml(type)}${calc.msoEnabled ? ' + MSO' : ''}</span>
   </div>
 
   <!-- BODY -->
@@ -356,6 +486,8 @@ export function buildProposalHtml(
 
     <!-- CUSTOM LINE ITEMS -->
     ${customSection}
+
+    ${msoSection}
 
     <!-- PRICE SUMMARY BAR -->
     <div class="price-summary">
@@ -475,6 +607,8 @@ export function buildProposalHtml(
       </div>
     </div>
 
+    ${buildMsoSection(d, calc)}
+
   </div><!-- end doc-body -->
 
   <!-- SIGNATURE BAND -->
@@ -540,7 +674,7 @@ export function buildSignatureHtml(
       <div class="sd-line-item">
         <div class="sdli-desc">
           <div class="sdli-name">CCaaS CloudSupport \u2014 Contact Center</div>
-          <div class="sdli-note">CCaaS CloudSupport</div>
+          <div class="sdli-note">Base support</div>
         </div>
         <div class="sdli-qty">\u2014</div>
         <div class="sdli-price">${fmtFull(calc.ccaasSup)}/yr</div>
@@ -552,12 +686,24 @@ export function buildSignatureHtml(
       <div class="sd-line-item">
         <div class="sdli-desc">
           <div class="sdli-name">${escHtml(l.label)}</div>
-          <div class="sdli-note">Custom pricing adjustment</div>
+          <div class="sdli-note">Custom line item</div>
         </div>
         <div class="sdli-qty">\u2014</div>
         <div class="sdli-price">${fmtFull(l.price || 0)}/yr</div>
       </div>`).join('')
     : '';
+
+  const sigTierMeta = getMsoTier(d.msoTier || '');
+  const msoLineItem = calc.msoEnabled ? `
+      <div class="sd-line-item" style="border-left:3px solid #00b8a0;padding-left:12px;margin-top:4px;">
+        <div class="sdli-desc">
+          <div class="sdli-name" style="color:#007d6e;">CloudSupport<sup style="font-size:8px;">+</sup> MSO \u2014 ${escHtml(sigTierMeta?.label ?? 'Custom')}</div>
+          <div class="sdli-note">${escHtml(sigTierMeta?.engineer ?? 'As scoped')} \u00b7 ${escHtml(sigTierMeta?.allocation ?? '\u2014')}</div>
+        </div>
+        <div class="sdli-qty">\u2014</div>
+        <div class="sdli-price" style="color:#007d6e;">${fmtFull(calc.msoSup)}/yr</div>
+      </div>
+  ` : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -576,7 +722,7 @@ export function buildSignatureHtml(
       <img src="${LOGO_SRC}" alt="PacketFusion" style="height:44px;width:auto;display:block;">
     </div>
     <div class="sd-doc-info">
-      <div class="sd-doc-label">CloudSupport Agreement</div>
+      <div class="sd-doc-label">${calc.msoEnabled ? 'CloudSupport + MSO Agreement' : 'CloudSupport Agreement'}</div>
       <div class="sd-doc-ref">${refNum} &nbsp;\u00b7&nbsp; ${today}</div>
     </div>
   </div>
@@ -585,12 +731,12 @@ export function buildSignatureHtml(
     <div class="sd-party">
       <div class="sd-party-role">Service Provider</div>
       <div class="sd-party-name">Packet Fusion, Inc.</div>
-      <div class="sd-party-sub">CloudSupport Services</div>
+      <div class="sd-party-sub">${calc.msoEnabled ? 'CloudSupport + MSO Services' : 'CloudSupport Services'}</div>
     </div>
     <div class="sd-party">
       <div class="sd-party-role">Customer</div>
       <div class="sd-party-name">${escHtml(customer)}</div>
-      <div class="sd-party-sub">${escHtml(type)}</div>
+      <div class="sd-party-sub">${escHtml(type)}${calc.msoEnabled ? ' + MSO' : ''}</div>
     </div>
   </div>
 
@@ -605,10 +751,11 @@ export function buildSignatureHtml(
     ${ucaasLineItem}
     ${ccaasLineItem}
     ${customLineItems}
+    ${msoLineItem}
 
     <div class="sd-totals">
       <div class="sd-total-row">
-        <span class="sd-total-label">Annual CloudSupport Investment</span>
+        <span class="sd-total-label">${calc.msoEnabled ? 'Annual CloudSupport + MSO Investment' : 'Annual CloudSupport Investment'}</span>
         <span class="sd-total-val">${fmtFull(calc.annual)}</span>
       </div>
       <div class="sd-total-row">
@@ -650,14 +797,16 @@ export function buildSignatureHtml(
 
     <div class="sd-section-label" style="margin-top:26px;">Term &amp; Renewal</div>
     <div class="sd-term">
-      <p>This Agreement co-terms with Customer\u2019s Packet Fusion Master Services Agreement and/or underlying provider subscription. Unless cancelled in writing, CloudSupport will automatically renew for successive terms at the then-current renewal rate.</p>
+      <p>This Agreement co-terms with Customer\u2019s Packet Fusion Master Services Agreement and/or underlying provider subscription. Unless cancelled in writing${calc.msoEnabled ? ' at least 30 days prior to renewal' : ''}, CloudSupport${calc.msoEnabled ? ' and the MSO Add-On' : ''} will automatically renew for successive terms at the then-current renewal rate.</p>
       <div class="sd-term-box">
-        This ${term}-year Agreement is billed annually at <strong>${fmtFull(calc.annual)}</strong> per year, for a total contract value of <strong>${fmtFull(calc.tcv)}</strong>. Term: ${startDate} through ${endDate}.${term > 1 ? ' Pricing is subject to escalation upon renewal.' : ''}
+        This ${term}-year Agreement is billed annually at <strong>${fmtFull(calc.annual)}</strong> per year, for a total contract value of <strong>${fmtFull(calc.tcv)}</strong>.${calc.msoEnabled ? ` Includes CloudSupport base services plus the MSO Add-On (${escHtml(sigTierMeta?.label ?? 'Custom')} \u2014 ${escHtml(sigTierMeta?.engineer ?? 'As scoped')}).` : ''} Term: ${startDate} through ${endDate}.${term > 1 ? ' Pricing is subject to escalation upon renewal.' : ''}
       </div>
     </div>
 
+    ${buildMsoSection(d, calc)}
+
     <div class="sd-sig-section">
-      <p class="sd-sig-preamble">By signing below, each party agrees to the terms of this CloudSupport Agreement. This Agreement is legally binding upon execution by both parties and is incorporated into the Customer\u2019s Master Services Agreement with Packet Fusion, Inc.</p>
+      <p class="sd-sig-preamble">By signing below, each party agrees to the terms of this ${calc.msoEnabled ? 'CloudSupport + MSO Agreement' : 'CloudSupport Agreement'}. This Agreement is legally binding upon execution by both parties and is incorporated into the Customer\u2019s Master Services Agreement with Packet Fusion, Inc.</p>
       <div class="sd-sig-grid">
         <div>
           <div class="sd-sig-party-label">Service Provider</div>
@@ -671,7 +820,7 @@ export function buildSignatureHtml(
         </div>
       </div>
       <div class="sd-footer">
-        Packet Fusion, Inc. &nbsp;\u00b7&nbsp; CloudSupport Agreement &nbsp;\u00b7&nbsp; ${refNum} &nbsp;\u00b7&nbsp; ${fmtFull(calc.annual)}/yr &nbsp;\u00b7&nbsp; ${term}-Year Term<br>
+        Packet Fusion, Inc. &nbsp;\u00b7&nbsp; ${calc.msoEnabled ? 'CloudSupport + MSO Agreement' : 'CloudSupport Agreement'} &nbsp;\u00b7&nbsp; ${refNum} &nbsp;\u00b7&nbsp; ${fmtFull(calc.annual)}/yr &nbsp;\u00b7&nbsp; ${term}-Year Term${calc.msoEnabled && sigTierMeta ? ` \u00b7 MSO: ${escHtml(sigTierMeta.label)}` : ''}<br>
         This document is confidential and intended solely for the named parties.
       </div>
     </div>
@@ -682,9 +831,10 @@ export function buildSignatureHtml(
 </html>`;
 }
 
-// ─── buildMsoHtml ─────────────────────────────────────────────────────────────
+// (buildMsoHtml removed — MSO content is injected inline via buildMsoSection)
 
-export function buildMsoHtml(
+/* eslint-disable @typescript-eslint/no-unused-vars */
+function _deadBuildMsoHtml(
   oppName: string,
   d: OppFormData,
   calc: OppCalcResult,

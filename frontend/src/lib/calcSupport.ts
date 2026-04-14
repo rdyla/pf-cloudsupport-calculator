@@ -63,6 +63,7 @@ export const DEFAULT_FORM_DATA: OppFormData = {
   afterHoursRate: 165,
   advancedTaskRate: 145,
   msoEnabled: false,
+  msoTier: '',
   msoFee: 0,
   ovrUcaas: null,
   ovrCcaas: null,

@@ -20,6 +20,7 @@ export interface OppFormData {
   afterHoursRate: number;
   advancedTaskRate: number;
   msoEnabled: boolean;
+  msoTier: string;   // MsoTierKey | 'custom' | ''
   msoFee: number;
   ovrUcaas: number | null;
   ovrCcaas: number | null;
