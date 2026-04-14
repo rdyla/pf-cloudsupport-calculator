@@ -189,6 +189,77 @@ function sharedStyles(): string {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
+
+        /* ── Keep blocks from splitting mid-element ── */
+
+        /* Section headers stay glued to the content that follows */
+        .agreement-doc .section-header {
+          break-after: avoid;
+          page-break-after: avoid;
+        }
+
+        /* Card-type containers should not split in half */
+        .agreement-doc .pricing-wrap,
+        .agreement-doc .price-summary,
+        .agreement-doc .coverage-grid,
+        .agreement-doc .coverage-card,
+        .agreement-doc .scope-block,
+        .agreement-doc .term-panel,
+        .agreement-doc .mac-item,
+        .agreement-doc .pricing-note,
+        .agreement-doc .doc-intro,
+        .sig-doc .sd-parties,
+        .sig-doc .sd-totals,
+        .sig-doc .sd-recital,
+        .sig-doc .sd-term-box,
+        .sig-doc .sd-scope {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        /* Signature blocks: keep together and force onto their own page if needed */
+        .agreement-doc .sig-band {
+          break-inside: avoid;
+          page-break-inside: avoid;
+          break-before: avoid-page;
+          page-break-before: avoid;
+        }
+        .sig-doc .sd-sig-section {
+          break-inside: avoid;
+          page-break-inside: avoid;
+          break-before: always;
+          page-break-before: always;
+        }
+
+        /* MSO section — whole block and inner cards */
+        .mso-section {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .mso-card {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .mso-panels {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .mso-sla-table {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .mso-note {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        /* Individual pricing table rows should not orphan */
+        .agreement-doc .pricing-table tr,
+        .sig-doc .sd-line-item,
+        .sig-doc .sd-total-row {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
       }
     </style>
   `;
@@ -255,14 +326,14 @@ function buildMsoSection(d: OppFormData, calc: OppCalcResult): string {
     : 'all hours, 24/7/365';
 
   return `
-    <div style="border-top:3px solid #00b8a0;margin-top:30px;padding-top:22px;">
+    <div class="mso-section" style="border-top:3px solid #00b8a0;margin-top:30px;padding-top:22px;">
 
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
         <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;color:#00b8a0;text-transform:uppercase;">CloudSupport\u207a MSO Add-On</div>
         <div style="flex:1;height:1px;background:rgba(0,184,160,0.2);"></div>
       </div>
 
-      <div style="background:linear-gradient(135deg,#0d1b2e 0%,#0f2540 100%);border-radius:10px;padding:20px 22px;margin-bottom:18px;color:#fff;">
+      <div class="mso-card" style="background:linear-gradient(135deg,#0d1b2e 0%,#0f2540 100%);border-radius:10px;padding:20px 22px;margin-bottom:18px;color:#fff;">
         <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;color:#00b8a0;text-transform:uppercase;margin-bottom:8px;">Engineering Resource Model</div>
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
           <span style="font-size:20px;font-weight:800;letter-spacing:-0.02em;">${escHtml(tierLabel)}</span>
@@ -285,17 +356,20 @@ function buildMsoSection(d: OppFormData, calc: OppCalcResult): string {
         </div>
       </div>
 
-      <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0d1b2e;margin-bottom:10px;">What Your Engineer Delivers</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px;">
-        ${panels.map(([title, desc]) => `
-        <div style="background:#f8fafc;border:1px solid #e4eaf2;border-left:3px solid #00b8a0;border-radius:7px;padding:11px 13px;">
-          <div style="font-size:11.5px;font-weight:700;color:#0d1b2e;margin-bottom:3px;">${title}</div>
-          <div style="font-size:11px;color:#64748b;line-height:1.55;">${desc}</div>
-        </div>`).join('')}
+      <div class="mso-panels" style="margin-bottom:18px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0d1b2e;margin-bottom:10px;">What Your Engineer Delivers</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+          ${panels.map(([title, desc]) => `
+          <div style="background:#f8fafc;border:1px solid #e4eaf2;border-left:3px solid #00b8a0;border-radius:7px;padding:11px 13px;break-inside:avoid;page-break-inside:avoid;">
+            <div style="font-size:11.5px;font-weight:700;color:#0d1b2e;margin-bottom:3px;">${title}</div>
+            <div style="font-size:11px;color:#64748b;line-height:1.55;">${desc}</div>
+          </div>`).join('')}
+        </div>
       </div>
 
-      <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0d1b2e;margin-bottom:10px;">Engineering Response SLA</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;">
+      <div class="mso-sla-table" style="margin-bottom:14px;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0d1b2e;margin-bottom:10px;">Engineering Response SLA</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead>
           <tr style="background:#0d1b2e;color:#fff;">
             <th style="padding:9px 12px;text-align:left;font-weight:600;letter-spacing:0.04em;">Priority</th>
@@ -306,7 +380,7 @@ function buildMsoSection(d: OppFormData, calc: OppCalcResult): string {
         </thead>
         <tbody>
           ${slaRows.map(([label, bg, fg, desc, resp, res], i) => `
-          <tr style="border-bottom:1px solid #f1f5f9;${i % 2 === 1 ? 'background:#fafbfc;' : ''}">
+          <tr style="border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid;${i % 2 === 1 ? 'background:#fafbfc;' : ''}">
             <td style="padding:10px 12px;"><span style="display:inline-block;background:#${bg};color:#${fg};font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;">${label}</span></td>
             <td style="padding:10px 12px;color:#374151;">${desc}</td>
             <td style="padding:10px 12px;text-align:center;font-weight:700;color:#0d1b2e;font-family:'IBM Plex Mono',monospace;">${resp}</td>
@@ -314,9 +388,10 @@ function buildMsoSection(d: OppFormData, calc: OppCalcResult): string {
           </tr>`).join('')}
         </tbody>
         <tfoot><tr><td colspan="4" style="padding:7px 12px;font-size:10.5px;color:#94a3b8;font-style:italic;background:#f8fafc;border-top:1px solid #e4eaf2;">All response times apply to ${hoursNote}. Engineer response means direct contact \u2014 not a queue or triage step.</td></tr></tfoot>
-      </table>
+        </table>
+      </div>
 
-      <div style="background:#f0faf8;border:1px solid rgba(0,184,160,0.25);border-radius:7px;padding:11px 14px;font-size:12px;color:#374151;line-height:1.6;">
+      <div class="mso-note" style="background:#f0faf8;border:1px solid rgba(0,184,160,0.25);border-radius:7px;padding:11px 14px;font-size:12px;color:#374151;line-height:1.6;">
         The CloudSupport<sup style="font-size:9px;">+</sup> MSO Add-On is billed annually at <strong>${fmtFull(calc.msoSup)}/yr</strong> and co-terms with this Agreement. The engineering resource model (${escHtml(tierLabel)} \u2014 ${escHtml(tierEngineer)}) is committed for the full Agreement term. The MSO Add-On automatically renews with this Agreement unless cancelled in writing at least 30 days prior to renewal.
       </div>
 

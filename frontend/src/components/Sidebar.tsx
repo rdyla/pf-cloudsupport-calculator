@@ -4,9 +4,14 @@ import { oppsApi } from '../api/client';
 import { useAppStore } from '../store/useAppStore';
 import { fmt } from '../lib/calcSupport';
 
-interface Props { onLogout: () => void; }
+interface Props {
+  onLogout: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+  isMobile?: boolean;
+}
 
-export default function Sidebar({ onLogout }: Props) {
+export default function Sidebar({ onLogout, isOpen = true, onClose, isMobile = false }: Props) {
   const { getToken } = useApiToken();
   const { opps, removeOpp, currentOppId, setCurrentOppId, currentUser } = useAppStore();
   const [creating, setCreating] = useState(false);
@@ -42,15 +47,34 @@ export default function Sidebar({ onLogout }: Props) {
     }
   }
 
+  // On mobile, hide entirely when closed (renders as fixed overlay when open)
+  if (isMobile && !isOpen) return null;
+
+  const mobileStyle: React.CSSProperties = isMobile ? {
+    position: 'fixed', top: 0, left: 0, height: '100%', zIndex: 200,
+    boxShadow: '4px 0 24px rgba(0,0,0,0.5)',
+  } : {};
+
   return (
     <aside style={{
       width: 280, minWidth: 280, background: 'var(--navy-mid)',
       borderRight: '1px solid var(--border)', display: 'flex',
       flexDirection: 'column', overflow: 'hidden',
+      ...mobileStyle,
     }}>
-      {/* Logo */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-        <img src="/packetfusionlogo_white.png" alt="Packet Fusion" style={{ width: '100%', maxWidth: 220, display: 'block' }} />
+      {/* Logo + close button on mobile */}
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <img src="/packetfusionlogo_white.png" alt="Packet Fusion" style={{ width: '100%', maxWidth: 180, display: 'block' }} />
+        {isMobile && (
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)',
+              cursor: 'pointer', fontSize: 22, padding: '0 4px', lineHeight: 1, flexShrink: 0,
+            }}
+            aria-label="Close sidebar"
+          >×</button>
+        )}
       </div>
 
       {/* New opportunity */}
@@ -91,7 +115,7 @@ export default function Sidebar({ onLogout }: Props) {
           return (
             <div
               key={opp.id}
-              onClick={() => setCurrentOppId(opp.id)}
+              onClick={() => { setCurrentOppId(opp.id); if (isMobile) onClose?.(); }}
               style={{
                 padding: '10px 10px 9px', borderRadius: 6, cursor: 'pointer',
                 border: `1px solid ${isActive ? 'var(--teal-dim)' : 'transparent'}`,

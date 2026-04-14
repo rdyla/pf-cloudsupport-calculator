@@ -7,8 +7,10 @@ import { useMsal } from '@azure/msal-react';
 import { useApiToken } from '../auth/useApiToken';
 import { oppsApi, usersApi } from '../api/client';
 import { useAppStore } from '../store/useAppStore';
+import { useIsMobile } from '../hooks/useWindowWidth';
 import Sidebar from '../components/Sidebar';
 import OppWorkspace from '../components/OppWorkspace';
+import DashboardView from '../components/DashboardView';
 
 export default function AppShell() {
   const { instance, accounts } = useMsal();
@@ -16,6 +18,8 @@ export default function AppShell() {
   const { setCurrentUser, setOpps, currentOppId } = useAppStore();
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     async function init() {
@@ -60,31 +64,30 @@ export default function AppShell() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Sidebar onLogout={handleLogout} />
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: isMobile ? 'auto' : '100vh', minHeight: isMobile ? '100dvh' : undefined, overflow: isMobile ? 'visible' : 'hidden' }}>
+      {/* Backdrop for mobile sidebar */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+            zIndex: 150,
+          }}
+        />
+      )}
+      <Sidebar
+        onLogout={handleLogout}
+        isOpen={isMobile ? sidebarOpen : true}
+        onClose={() => setSidebarOpen(false)}
+        isMobile={isMobile}
+      />
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: isMobile ? 'visible' : 'hidden', minWidth: 0 }}>
         {currentOppId
-          ? <OppWorkspace />
-          : <NoOppState />
+          ? <OppWorkspace onOpenSidebar={() => setSidebarOpen(true)} />
+          : <DashboardView onOpenSidebar={() => setSidebarOpen(true)} />
         }
       </main>
     </div>
   );
 }
 
-function NoOppState() {
-  return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
-    }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-      <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>
-        No opportunity selected
-      </div>
-      <div style={{ fontSize: 13 }}>
-        Select an opportunity from the sidebar or create a new one.
-      </div>
-    </div>
-  );
-}

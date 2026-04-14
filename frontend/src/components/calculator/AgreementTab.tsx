@@ -13,6 +13,7 @@ import { sharepointApi, oppsApi } from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
 import { calcSupport } from '../../lib/calcSupport';
 import { buildProposalHtml, buildSignatureHtml } from '../../lib/buildAgreementHtml';
+import { useIsMobile } from '../../hooks/useWindowWidth';
 import type { Opportunity, SPLocation } from '../../types';
 
 interface Props { opp: Opportunity; }
@@ -22,6 +23,7 @@ type Mode = 'proposal' | 'signature';
 export default function AgreementTab({ opp }: Props) {
   const { getToken }  = useApiToken();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isMobile  = useIsMobile();
   const [mode, setMode] = useState<Mode>('proposal');
 
   // SharePoint state
@@ -178,7 +180,9 @@ export default function AgreementTab({ opp }: Props) {
           </span>
         )}
 
-        <button onClick={() => iframeRef.current?.contentWindow?.print()} style={secondaryBtnStyle}>Print / PDF</button>
+        {!isMobile && (
+          <button onClick={() => iframeRef.current?.contentWindow?.print()} style={secondaryBtnStyle}>Print / PDF</button>
+        )}
 
         <button
           onClick={handleSaveToSharePoint}
@@ -208,15 +212,39 @@ export default function AgreementTab({ opp }: Props) {
         </div>
       )}
 
-      {/* Preview iframe */}
-      <div style={{ border: '1px solid var(--border-mid)', borderRadius: 8, overflow: 'hidden', height: '70vh' }}>
-        <iframe
-          ref={iframeRef}
-          srcDoc={html}
-          style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
-          title="Agreement Preview"
-        />
-      </div>
+      {/* Preview — iframe on desktop, open-in-new-tab on mobile */}
+      {isMobile ? (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 12, padding: '32px 16px',
+          border: '1px solid var(--border-mid)', borderRadius: 8, background: 'var(--surface)',
+        }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
+            Document preview is not available on mobile.
+          </div>
+          <button
+            onClick={() => {
+              const blob = new Blob([html], { type: 'text/html' });
+              const url  = URL.createObjectURL(blob);
+              window.open(url, '_blank');
+              // Release after a short delay to allow the tab to load
+              setTimeout(() => URL.revokeObjectURL(url), 10000);
+            }}
+            style={primaryBtnStyle}
+          >
+            Open in New Tab ↗
+          </button>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid var(--border-mid)', borderRadius: 8, overflow: 'hidden', height: '70vh' }}>
+          <iframe
+            ref={iframeRef}
+            srcDoc={html}
+            style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+            title="Agreement Preview"
+          />
+        </div>
+      )}
     </div>
   );
 }

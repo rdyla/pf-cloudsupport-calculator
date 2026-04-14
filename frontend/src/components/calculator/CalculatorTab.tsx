@@ -4,6 +4,7 @@ import { oppsApi } from '../../api/client';
 import { useAppStore } from '../../store/useAppStore';
 import { calcSupport, fmt, DEFAULT_FORM_DATA } from '../../lib/calcSupport';
 import { MSO_TIERS, getMsoTier } from '../../lib/msoTiers';
+import { useIsMobile } from '../../hooks/useWindowWidth';
 import type { MsoTierKey } from '../../lib/msoTiers';
 import type { OppFormData, Opportunity } from '../../types';
 
@@ -92,9 +93,10 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
   }
 
   const canDiscount = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+  const isMobile = useIsMobile();
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: 24, alignItems: 'start' }}>
       {/* Left: Inputs */}
       <div>
         {/* Opportunity Type */}
@@ -122,7 +124,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
         {/* Inputs */}
         <div style={{ ...cardStyle, marginTop: 16 }}>
           <div style={cardTitleStyle}>Inputs</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
             {form.oppType !== 'CCaaS Only' && (
               <InputField label="UCaaS Users" value={form.ucaasUsers}
                 onChange={v => set('ucaasUsers', Number(v))} />
@@ -215,7 +217,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
         {canDiscount && (
           <div style={{ ...cardStyle, marginTop: 16 }}>
             <div style={cardTitleStyle}>Overrides <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(managers only)</span></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
               {form.oppType !== 'CCaaS Only' && (
                 <InputField label="UCaaS Support Override ($)" value={form.ovrUcaas ?? ''}
                   onChange={v => setOverride('ovrUcaas', v)} placeholder={fmt(calc.ucaasCalc)} />
@@ -266,7 +268,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
         {/* Labor Rates */}
         <div style={{ ...cardStyle, marginTop: 16 }}>
           <div style={cardTitleStyle}>Labor Rate Adjustors</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
             <InputField label="After-Hours Rate ($/hr)" value={form.afterHoursRate}
               onChange={v => set('afterHoursRate', Number(v))} />
             <InputField label="Advanced Task Rate ($/hr)" value={form.advancedTaskRate}
@@ -288,7 +290,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
       </div>
 
       {/* Right: Summary */}
-      <div style={{ position: 'sticky', top: 0 }}>
+      <div style={{ position: isMobile ? 'static' : 'sticky', top: 0 }}>
         <div style={cardStyle}>
           <div style={cardTitleStyle}>Support Summary</div>
           <div style={{ marginTop: 16 }}>
