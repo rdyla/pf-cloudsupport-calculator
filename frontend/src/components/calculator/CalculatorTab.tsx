@@ -235,12 +235,12 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
                 <div style={hintStyle}>Support: 30% of annual licensing · Excludes usage, consumption, DIDs &amp; telco</div>
               </div>
             )}
-            {(form.oppType !== 'UCaaS Only' || form.advAppEnabled) && (
+            {form.oppType !== 'UCaaS Only' && (
               <div>
                 <InputField label="Impl. SOW ($)" value={form.implSow}
                   onChange={v => set('implSow', Number(v))} />
                 <div style={hintStyle}>
-                  {(form.oppType === 'Advanced Applications' || form.advAppEnabled)
+                  {form.oppType === 'Advanced Applications'
                     ? '$2,500 base + 20% of SOW'
                     : 'Support: 20% of SOW value'}
                 </div>
@@ -341,7 +341,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
                 <InputField label="Impl. Support Override ($)" value={form.ovrImpl ?? ''}
                   onChange={v => setOverride('ovrImpl', v)} placeholder={fmt(calc.implCalc)} />
               )}
-              {(form.oppType === 'Advanced Applications' || form.advAppEnabled) && (
+              {form.oppType === 'Advanced Applications' && (
                 <InputField label="Adv. App Support Override ($)" value={form.ovrAdvApp ?? ''}
                   onChange={v => setOverride('ovrAdvApp', v)} placeholder={fmt(calc.advAppCalc)} />
               )}
@@ -419,7 +419,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
             <SummaryRow label="Impl. Support" value={calc.implSup} overridden={calc.implOverridden}
               show={form.oppType === 'CCaaS Only' || form.oppType === 'UCaaS + CCaaS'} />
             <SummaryRow label="Advanced App Support" value={calc.advAppSup} overridden={calc.advAppOverridden}
-              show={form.oppType === 'Advanced Applications' || form.advAppEnabled} />
+              show={form.oppType === 'Advanced Applications'} />
             <SummaryRow label="MSO" value={calc.msoSup} overridden={calc.msoOverridden} show={form.msoEnabled} />
             {form.customLines.map((l, i) => (
               <SummaryRow key={i} label={l.label || `Custom ${i + 1}`} value={l.price} />

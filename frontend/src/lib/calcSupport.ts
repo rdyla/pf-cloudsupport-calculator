@@ -18,7 +18,7 @@ export function calcSupport(d: OppFormData): OppCalcResult {
   }
   const ccaasCalc  = (type === 'CCaaS Only' || type === 'UCaaS + CCaaS') ? ccaasLic * 0.30 : 0;
   const implCalc   = (type === 'CCaaS Only' || type === 'UCaaS + CCaaS') ? implSow * 0.20 : 0;
-  const isAdvApp   = type === 'Advanced Applications' || d.advAppEnabled === true;
+  const isAdvApp   = type === 'Advanced Applications';
   const advAppCalc = isAdvApp ? 2500 + implSow * 0.20 : 0;
   const msoCalc    = msoEnabled ? msoFeeRaw : 0;
 
