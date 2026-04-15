@@ -126,15 +126,26 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
           <div style={cardTitleStyle}>Inputs</div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
             {form.oppType !== 'CCaaS Only' && (
-              <InputField label="UCaaS Users" value={form.ucaasUsers}
-                onChange={v => set('ucaasUsers', Number(v))} />
+              <div>
+                <InputField label="UCaaS Users" value={form.ucaasUsers}
+                  onChange={v => set('ucaasUsers', Number(v))} />
+                <div style={hintStyle}>$1.00/user/month · billed annually · $2,500/yr minimum</div>
+              </div>
             )}
             {form.oppType !== 'UCaaS Only' && (
-              <InputField label="CCaaS Monthly Licensing ($)" value={form.ccaasLicensing}
-                onChange={v => set('ccaasLicensing', Number(v))} />
+              <div>
+                <InputField label="CCaaS Annual Licensing ($)" value={form.ccaasLicensing}
+                  onChange={v => set('ccaasLicensing', Number(v))} />
+                <div style={hintStyle}>Support: 30% of annual licensing · Excludes usage, consumption, DIDs &amp; telco</div>
+              </div>
             )}
-            <InputField label="Impl. SOW ($)" value={form.implSow}
-              onChange={v => set('implSow', Number(v))} />
+            {form.oppType !== 'UCaaS Only' && (
+              <div>
+                <InputField label="Impl. SOW ($)" value={form.implSow}
+                  onChange={v => set('implSow', Number(v))} />
+                <div style={hintStyle}>Support: 30% of SOW value</div>
+              </div>
+            )}
             <InputField label="Term (years)" value={form.term} min={1} max={10}
               onChange={v => set('term', Number(v))} />
             <DateField label="Contract Start" value={form.contractStart}
@@ -226,8 +237,10 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
                 <InputField label="CCaaS Support Override ($)" value={form.ovrCcaas ?? ''}
                   onChange={v => setOverride('ovrCcaas', v)} placeholder={fmt(calc.ccaasCalc)} />
               )}
-              <InputField label="Impl. Support Override ($)" value={form.ovrImpl ?? ''}
-                onChange={v => setOverride('ovrImpl', v)} placeholder={fmt(calc.implCalc)} />
+              {form.oppType !== 'UCaaS Only' && (
+                <InputField label="Impl. Support Override ($)" value={form.ovrImpl ?? ''}
+                  onChange={v => setOverride('ovrImpl', v)} placeholder={fmt(calc.implCalc)} />
+              )}
               {form.msoEnabled && (
                 <InputField label="MSO Override ($)" value={form.ovrMso ?? ''}
                   onChange={v => setOverride('ovrMso', v)} placeholder={fmt(calc.msoCalc)} />
@@ -298,7 +311,8 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
               show={form.oppType !== 'CCaaS Only'} minNote={calc.minApplied ? '(min applied)' : undefined} />
             <SummaryRow label="CCaaS Support" value={calc.ccaasSup} overridden={calc.ccaasOverridden}
               show={form.oppType !== 'UCaaS Only'} />
-            <SummaryRow label="Impl. Support" value={calc.implSup} overridden={calc.implOverridden} />
+            <SummaryRow label="Impl. Support" value={calc.implSup} overridden={calc.implOverridden}
+              show={form.oppType !== 'UCaaS Only'} />
             <SummaryRow label="MSO" value={calc.msoSup} overridden={calc.msoOverridden} show={form.msoEnabled} />
             {form.customLines.map((l, i) => (
               <SummaryRow key={i} label={l.label || `Custom ${i + 1}`} value={l.price} />
@@ -429,6 +443,9 @@ const secondaryBtnStyle: React.CSSProperties = {
   color: 'var(--text-secondary)', fontFamily: 'IBM Plex Sans, sans-serif',
   fontSize: 13, fontWeight: 500, cursor: 'pointer',
 };
+const hintStyle = {
+  fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.4,
+} as const;
 const smallBtnStyle: React.CSSProperties = {
   padding: '4px 10px', background: 'var(--surface-mid)',
   border: '1px solid var(--border-mid)', borderRadius: 5,

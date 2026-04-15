@@ -17,7 +17,7 @@ export function calcSupport(d: OppFormData): OppCalcResult {
     if (ucaasCalc < 2500 && users > 0) { ucaasCalc = 2500; minApplied = true; }
   }
   const ccaasCalc = type !== 'UCaaS Only' ? ccaasLic * 0.30 : 0;
-  const implCalc  = implSow * 0.30;
+  const implCalc  = type !== 'UCaaS Only' ? implSow * 0.30 : 0;
   const msoCalc   = msoEnabled ? msoFeeRaw : 0;
 
   // Apply overrides if set
