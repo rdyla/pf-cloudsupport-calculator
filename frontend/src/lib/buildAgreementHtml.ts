@@ -424,17 +424,33 @@ export function buildProposalHtml(
     users <= 500 ? 'Business' :
     users <= 2000 ? 'Professional' : 'Enterprise';
 
-  const showUCaaS = type !== 'CCaaS Only';
-  const showCCaaS = type !== 'UCaaS Only';
+  const showUCaaS  = type === 'UCaaS Only' || type === 'UCaaS + CCaaS';
+  const showCCaaS  = type === 'CCaaS Only' || type === 'UCaaS + CCaaS';
+  const showAdvApp = type === 'Advanced Applications';
   const proposalTierMeta = getMsoTier(d.msoTier || '');
+
+  // Advanced Applications helpers
+  const RC_PRODUCT_LABELS: Record<string, string> = {
+    ace: 'ACE \u2014 Conversation Intelligence',
+    ava: 'AVA \u2014 Virtual Agent',
+    air: 'AIR \u2014 AI Receptionist',
+  };
+  const advPlatformLabel =
+    d.advAppPlatform === 'zoom' ? 'Zoom' :
+    d.advAppPlatform === 'ringcentral' ? 'RingCentral' :
+    d.advAppOtherDesc || 'Other';
+  const advProductLabels = (d.advAppProducts ?? []).map(p =>
+    d.advAppPlatform === 'ringcentral' ? (RC_PRODUCT_LABELS[p] ?? p) : p
+  );
 
   let secN = 0;
   const secNum = () => { secN++; return secN; };
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const typeLabel =
-    type === 'CCaaS Only' ? 'CCaaS' :
-    type === 'UCaaS Only' ? 'UCaaS' :
+    type === 'CCaaS Only'           ? 'CCaaS' :
+    type === 'UCaaS Only'           ? 'UCaaS' :
+    type === 'Advanced Applications' ? 'Advanced Applications' :
     'UCaaS and CCaaS';
 
   const ucaasSection = showUCaaS ? `
@@ -479,6 +495,32 @@ export function buildProposalHtml(
               : `<tr><td colspan="2" style="color:#94a3b8;font-style:italic;text-align:center;padding:20px;">No CCaaS components configured</td></tr>`}
           </tbody>
           <tfoot><tr><td colspan="2">Usage, consumption, DIDs, and telco charges are excluded from CCaaS licensing. Auto-renews and co-terms with Customer\u2019s Subscription Term.</td></tr></tfoot>
+        </table>
+      </div>
+  ` : '';
+
+  const advAppSection = showAdvApp ? `
+      <div class="section-header">
+        <div class="section-num">${secNum()}</div>
+        <div class="section-title">Advanced Applications Support \u2014 ${escHtml(advPlatformLabel)}</div>
+        <div class="section-divider"></div>
+      </div>
+      <div class="pricing-wrap">
+        <table class="pricing-table">
+          <thead><tr><th>Platform</th><th>Applications Covered</th><th class="price-col">Annual Investment</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="label-cell">${escHtml(advPlatformLabel)}</div></td>
+              <td>
+                ${advProductLabels.length > 0
+                  ? advProductLabels.map(p => `<div style="font-size:12.5px;color:#374151;line-height:1.8;">\u2022 ${escHtml(p)}</div>`).join('')
+                  : `<span style="color:#94a3b8;font-style:italic;">No specific applications selected</span>`
+                }
+              </td>
+              <td class="price-col">${fmtFull(calc.advAppSup)}</td>
+            </tr>
+          </tbody>
+          <tfoot><tr><td colspan="3">Includes $2,500 base fee plus 30% of implementation SOW. Auto-renews and co-terms with Customer\u2019s Subscription Term.</td></tr></tfoot>
         </table>
       </div>
   ` : '';
@@ -552,12 +594,17 @@ export function buildProposalHtml(
   <div class="doc-body">
 
     <p class="doc-intro">
-      Packet Fusion\u2019s <strong>CloudSupport</strong> combines priority response times, proactive system optimization, and personalized growth strategies to maximize your organization\u2019s investment across your entire ${typeLabel} landscape \u2014 including collaboration, voice, and contact center applications. Whether it\u2019s troubleshooting, updates, or long-term planning, our CloudSupport ensures your collaboration solutions perform efficiently and scale with your business needs.
+      ${showAdvApp
+        ? `Packet Fusion\u2019s <strong>CloudSupport for Advanced Applications</strong> provides dedicated support for your <strong>${escHtml(advPlatformLabel)}</strong> implementation${advProductLabels.length > 0 ? `, covering ${advProductLabels.map(p => `<strong>${escHtml(p)}</strong>`).join(', ')}` : ''}. Our team brings deep expertise in AI-powered applications to ensure your investment is configured, maintained, and continuously optimized.`
+        : `Packet Fusion\u2019s <strong>CloudSupport</strong> combines priority response times, proactive system optimization, and personalized growth strategies to maximize your organization\u2019s investment across your entire ${typeLabel} landscape \u2014 including collaboration, voice, and contact center applications. Whether it\u2019s troubleshooting, updates, or long-term planning, our CloudSupport ensures your collaboration solutions perform efficiently and scale with your business needs.`
+      }
     </p>
 
     ${ucaasSection}
 
     ${ccaasSection}
+
+    ${advAppSection}
 
     <!-- CUSTOM LINE ITEMS -->
     ${customSection}
