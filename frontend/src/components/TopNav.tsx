@@ -61,27 +61,31 @@ export default function TopNav({ onLogout, onOpenSidebar, isMobile }: Props) {
             </button>
           )}
 
+          {/* Logo */}
+          <img src="/packetfusionlogo_white.png" alt="Packet Fusion" style={{ height: 33, display: 'block' }} />
+
+          {!isMobile && (
+            <div style={{ width: 1, height: 20, background: 'var(--border-mid)', flexShrink: 0 }} />
+          )}
+
           {/* Home button */}
           <button
             onClick={() => setCurrentOppId(null)}
+            title="Go to dashboard"
             style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: '4px 8px', borderRadius: 6,
-              color: 'var(--text-primary)',
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'none', border: '1px solid var(--border-mid)',
+              borderRadius: 6, cursor: 'pointer', padding: '5px 10px',
+              color: 'var(--text-secondary)',
             }}
-            title="Dashboard"
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
           >
-            <img src="/packetfusionlogo_white.png" alt="Packet Fusion" style={{ height: 22, display: 'block' }} />
-            {!isMobile && (
-              <span style={{
-                fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-                borderLeft: '1px solid var(--border-mid)', paddingLeft: 10,
-              }}>
-                CloudSupport Calculator
-              </span>
-            )}
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M2 6.5L8 2l6 4.5V14a1 1 0 01-1 1H3a1 1 0 01-1-1V6.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+              <path d="M6 15v-5h4v5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {!isMobile && <span style={{ fontSize: 12, fontWeight: 500 }}>Home</span>}
           </button>
         </div>
 
@@ -145,7 +149,7 @@ export default function TopNav({ onLogout, onOpenSidebar, isMobile }: Props) {
             {accountOpen && (
               <div style={{
                 position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                width: 240, background: 'var(--surface)',
+                width: 240, background: '#1a2d45',
                 border: '1px solid var(--border-mid)', borderRadius: 10,
                 boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
                 overflow: 'hidden', zIndex: 300,

@@ -73,7 +73,7 @@ export default function UsersModal({ onClose }: Props) {
         position: 'fixed', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
         width: 'min(600px, 95vw)', maxHeight: '80vh',
-        background: 'var(--surface)', border: '1px solid var(--border-mid)',
+        background: '#1a2d45', border: '1px solid var(--border-mid)',
         borderRadius: 12, zIndex: 201, display: 'flex', flexDirection: 'column',
         overflow: 'hidden',
       }}>
