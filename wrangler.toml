@@ -1,5 +1,6 @@
 name = "cloudsupport-calculator"
 main = "worker/src/index.ts"
+account_id = "521c322a89a17bb69f91f1e65177606e"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
