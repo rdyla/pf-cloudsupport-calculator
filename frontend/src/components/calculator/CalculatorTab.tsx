@@ -221,6 +221,19 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
         <div style={{ ...cardStyle, marginTop: 16 }}>
           <div style={cardTitleStyle}>Inputs</div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Customer Name
+              </label>
+              <input
+                type="text"
+                value={form.customerName}
+                onChange={e => set('customerName', e.target.value)}
+                placeholder="e.g. Acme Corporation"
+                style={inputStyle}
+              />
+              <div style={hintStyle}>Appears on the generated agreement — leave blank to use opportunity name</div>
+            </div>
             {(form.oppType === 'UCaaS Only' || form.oppType === 'UCaaS + CCaaS') && (
               <div>
                 <InputField label="UCaaS Users" value={form.ucaasUsers}

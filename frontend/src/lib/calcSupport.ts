@@ -79,5 +79,6 @@ export const DEFAULT_FORM_DATA: OppFormData = {
   ovrMso:    null,
   ovrAdvApp: null,
   customLines: [],
+  customerName: '',
   notes: '',
 };

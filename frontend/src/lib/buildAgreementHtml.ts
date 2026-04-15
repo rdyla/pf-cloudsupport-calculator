@@ -408,7 +408,7 @@ export function buildProposalHtml(
   versionNum: number,
 ): string {
   const type = d.oppType || 'UCaaS + CCaaS';
-  const customer = oppName || '[Customer Name]';
+  const customer = d.customerName || oppName || '[Customer Name]';
   const term = d.term || 3;
   const startDate = fmtDate(d.contractStart);
   const endDate = fmtDate(d.contractEnd);
@@ -762,7 +762,7 @@ export function buildSignatureHtml(
   versionNum: number,
 ): string {
   const type = d.oppType || 'UCaaS + CCaaS';
-  const customer = oppName || '[Customer Name]';
+  const customer = d.customerName || oppName || '[Customer Name]';
   const term = d.term || 3;
   const startDate = fmtDate(d.contractStart);
   const endDate = fmtDate(d.contractEnd);

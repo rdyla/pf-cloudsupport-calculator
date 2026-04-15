@@ -24,6 +24,7 @@ export interface OppFormData {
   ovrMso:     number | null;
   ovrAdvApp:  number | null;
   customLines: { label: string; price: number }[];
+  customerName: string;
   notes: string;
 }
 
