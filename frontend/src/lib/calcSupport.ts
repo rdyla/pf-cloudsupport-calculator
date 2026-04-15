@@ -12,32 +12,35 @@ export function calcSupport(d: OppFormData): OppCalcResult {
   // Base calculated values
   let ucaasCalc = 0;
   let minApplied = false;
-  if (type !== 'CCaaS Only') {
+  if (type === 'UCaaS Only' || type === 'UCaaS + CCaaS') {
     ucaasCalc = users * 1 * 12;
     if (ucaasCalc < 2500 && users > 0) { ucaasCalc = 2500; minApplied = true; }
   }
-  const ccaasCalc = type !== 'UCaaS Only' ? ccaasLic * 0.30 : 0;
-  const implCalc  = type !== 'UCaaS Only' ? implSow * 0.30 : 0;
-  const msoCalc   = msoEnabled ? msoFeeRaw : 0;
+  const ccaasCalc  = (type === 'CCaaS Only' || type === 'UCaaS + CCaaS') ? ccaasLic * 0.30 : 0;
+  const implCalc   = (type === 'CCaaS Only' || type === 'UCaaS + CCaaS') ? implSow * 0.30 : 0;
+  const advAppCalc = type === 'Advanced Applications' ? 2500 + implSow * 0.30 : 0;
+  const msoCalc    = msoEnabled ? msoFeeRaw : 0;
 
   // Apply overrides if set
-  const ucaasSup = d.ovrUcaas != null ? d.ovrUcaas : ucaasCalc;
-  const ccaasSup = d.ovrCcaas != null ? d.ovrCcaas : ccaasCalc;
-  const implSup  = d.ovrImpl  != null ? d.ovrImpl  : implCalc;
-  const msoSup   = d.ovrMso   != null ? d.ovrMso   : msoCalc;
+  const ucaasSup  = d.ovrUcaas  != null ? d.ovrUcaas  : ucaasCalc;
+  const ccaasSup  = d.ovrCcaas  != null ? d.ovrCcaas  : ccaasCalc;
+  const implSup   = d.ovrImpl   != null ? d.ovrImpl   : implCalc;
+  const advAppSup = d.ovrAdvApp != null ? d.ovrAdvApp : advAppCalc;
+  const msoSup    = d.ovrMso    != null ? d.ovrMso    : msoCalc;
 
   const customTotal = (d.customLines ?? []).reduce((sum, l) => sum + (Number(l.price) || 0), 0);
 
-  const annual = ucaasSup + ccaasSup + implSup + (msoEnabled ? msoSup : 0) + customTotal;
+  const annual = ucaasSup + ccaasSup + implSup + advAppSup + (msoEnabled ? msoSup : 0) + customTotal;
   const tcv    = annual * term;
 
   return {
-    ucaasSup, ccaasSup, implSup, msoSup, customTotal, annual, tcv,
-    ucaasCalc, ccaasCalc, implCalc, msoCalc,
-    ucaasOverridden: d.ovrUcaas != null,
-    ccaasOverridden: d.ovrCcaas != null,
-    implOverridden:  d.ovrImpl  != null,
-    msoOverridden:   d.ovrMso   != null,
+    ucaasSup, ccaasSup, implSup, advAppSup, msoSup, customTotal, annual, tcv,
+    ucaasCalc, ccaasCalc, implCalc, advAppCalc, msoCalc,
+    advAppOverridden: d.ovrAdvApp != null,
+    ucaasOverridden:  d.ovrUcaas  != null,
+    ccaasOverridden:  d.ovrCcaas  != null,
+    implOverridden:   d.ovrImpl   != null,
+    msoOverridden:    d.ovrMso    != null,
     msoEnabled,
     minApplied,
   };
@@ -65,10 +68,11 @@ export const DEFAULT_FORM_DATA: OppFormData = {
   msoEnabled: false,
   msoTier: '',
   msoFee: 0,
-  ovrUcaas: null,
-  ovrCcaas: null,
-  ovrImpl:  null,
-  ovrMso:   null,
+  ovrUcaas:  null,
+  ovrCcaas:  null,
+  ovrImpl:   null,
+  ovrMso:    null,
+  ovrAdvApp: null,
   customLines: [],
   notes: '',
 };

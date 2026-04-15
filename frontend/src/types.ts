@@ -2,7 +2,7 @@
 // (In a future monorepo setup these could be shared via a workspace package)
 
 export interface OppFormData {
-  oppType: 'UCaaS Only' | 'CCaaS Only' | 'UCaaS + CCaaS';
+  oppType: 'UCaaS Only' | 'CCaaS Only' | 'UCaaS + CCaaS' | 'Advanced Applications';
   ucaasUsers: number;
   ccaasLicensing: number;
   implSow: number;
@@ -14,10 +14,11 @@ export interface OppFormData {
   msoEnabled: boolean;
   msoTier: string;   // MsoTierKey | 'custom' | ''
   msoFee: number;
-  ovrUcaas: number | null;
-  ovrCcaas: number | null;
-  ovrImpl:  number | null;
-  ovrMso:   number | null;
+  ovrUcaas:   number | null;
+  ovrCcaas:   number | null;
+  ovrImpl:    number | null;
+  ovrMso:     number | null;
+  ovrAdvApp:  number | null;
   customLines: { label: string; price: number }[];
   notes: string;
 }
@@ -34,6 +35,9 @@ export interface OppCalcResult {
   ccaasCalc: number;
   implCalc:  number;
   msoCalc:   number;
+  advAppCalc:      number;
+  advAppSup:       number;
+  advAppOverridden: boolean;
   ucaasOverridden: boolean;
   ccaasOverridden: boolean;
   implOverridden:  boolean;

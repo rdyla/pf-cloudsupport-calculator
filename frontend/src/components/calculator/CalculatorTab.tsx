@@ -47,7 +47,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
-  function setOverride(key: 'ovrUcaas' | 'ovrCcaas' | 'ovrImpl' | 'ovrMso', val: string) {
+  function setOverride(key: 'ovrUcaas' | 'ovrCcaas' | 'ovrImpl' | 'ovrMso' | 'ovrAdvApp', val: string) {
     set(key, val === '' ? null : Number(val));
   }
 
@@ -105,7 +105,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
         <div style={cardStyle}>
           <div style={cardTitleStyle}>Opportunity Type</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-            {(['UCaaS Only', 'CCaaS Only', 'UCaaS + CCaaS'] as const).map(t => (
+            {(['UCaaS Only', 'CCaaS Only', 'UCaaS + CCaaS', 'Advanced Applications'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => set('oppType', t)}
@@ -127,14 +127,14 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
         <div style={{ ...cardStyle, marginTop: 16 }}>
           <div style={cardTitleStyle}>Inputs</div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
-            {form.oppType !== 'CCaaS Only' && (
+            {(form.oppType === 'UCaaS Only' || form.oppType === 'UCaaS + CCaaS') && (
               <div>
                 <InputField label="UCaaS Users" value={form.ucaasUsers}
                   onChange={v => set('ucaasUsers', Number(v))} />
                 <div style={hintStyle}>$1.00/user/month · billed annually · $2,500/yr minimum</div>
               </div>
             )}
-            {form.oppType !== 'UCaaS Only' && (
+            {(form.oppType === 'CCaaS Only' || form.oppType === 'UCaaS + CCaaS') && (
               <div>
                 <InputField label="CCaaS Annual Licensing ($)" value={form.ccaasLicensing}
                   onChange={v => set('ccaasLicensing', Number(v))} />
@@ -145,7 +145,11 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
               <div>
                 <InputField label="Impl. SOW ($)" value={form.implSow}
                   onChange={v => set('implSow', Number(v))} />
-                <div style={hintStyle}>Support: 30% of SOW value</div>
+                <div style={hintStyle}>
+                  {form.oppType === 'Advanced Applications'
+                    ? '$2,500 base + 30% of SOW'
+                    : 'Support: 30% of SOW value'}
+                </div>
               </div>
             )}
             <InputField label="Term (years)" value={form.term} min={1} max={10}
@@ -231,17 +235,21 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
           <div style={{ ...cardStyle, marginTop: 16 }}>
             <div style={cardTitleStyle}>Overrides <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(managers only)</span></div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 12 }}>
-              {form.oppType !== 'CCaaS Only' && (
+              {(form.oppType === 'UCaaS Only' || form.oppType === 'UCaaS + CCaaS') && (
                 <InputField label="UCaaS Support Override ($)" value={form.ovrUcaas ?? ''}
                   onChange={v => setOverride('ovrUcaas', v)} placeholder={fmt(calc.ucaasCalc)} />
               )}
-              {form.oppType !== 'UCaaS Only' && (
+              {(form.oppType === 'CCaaS Only' || form.oppType === 'UCaaS + CCaaS') && (
                 <InputField label="CCaaS Support Override ($)" value={form.ovrCcaas ?? ''}
                   onChange={v => setOverride('ovrCcaas', v)} placeholder={fmt(calc.ccaasCalc)} />
               )}
-              {form.oppType !== 'UCaaS Only' && (
+              {(form.oppType === 'CCaaS Only' || form.oppType === 'UCaaS + CCaaS') && (
                 <InputField label="Impl. Support Override ($)" value={form.ovrImpl ?? ''}
                   onChange={v => setOverride('ovrImpl', v)} placeholder={fmt(calc.implCalc)} />
+              )}
+              {form.oppType === 'Advanced Applications' && (
+                <InputField label="Adv. App Support Override ($)" value={form.ovrAdvApp ?? ''}
+                  onChange={v => setOverride('ovrAdvApp', v)} placeholder={fmt(calc.advAppCalc)} />
               )}
               {form.msoEnabled && (
                 <InputField label="MSO Override ($)" value={form.ovrMso ?? ''}
@@ -310,11 +318,14 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
           <div style={cardTitleStyle}>Support Summary</div>
           <div style={{ marginTop: 16 }}>
             <SummaryRow label="UCaaS Support" value={calc.ucaasSup} overridden={calc.ucaasOverridden}
-              show={form.oppType !== 'CCaaS Only'} minNote={calc.minApplied ? '(min applied)' : undefined} />
+              show={form.oppType === 'UCaaS Only' || form.oppType === 'UCaaS + CCaaS'}
+              minNote={calc.minApplied ? '(min applied)' : undefined} />
             <SummaryRow label="CCaaS Support" value={calc.ccaasSup} overridden={calc.ccaasOverridden}
-              show={form.oppType !== 'UCaaS Only'} />
+              show={form.oppType === 'CCaaS Only' || form.oppType === 'UCaaS + CCaaS'} />
             <SummaryRow label="Impl. Support" value={calc.implSup} overridden={calc.implOverridden}
-              show={form.oppType !== 'UCaaS Only'} />
+              show={form.oppType === 'CCaaS Only' || form.oppType === 'UCaaS + CCaaS'} />
+            <SummaryRow label="Advanced App Support" value={calc.advAppSup} overridden={calc.advAppOverridden}
+              show={form.oppType === 'Advanced Applications'} />
             <SummaryRow label="MSO" value={calc.msoSup} overridden={calc.msoOverridden} show={form.msoEnabled} />
             {form.customLines.map((l, i) => (
               <SummaryRow key={i} label={l.label || `Custom ${i + 1}`} value={l.price} />
