@@ -494,8 +494,8 @@ export function buildProposalHtml(
           <thead><tr><th>MSO Tier</th><th>Engineer Allocation</th><th class="price-col">Annual Investment</th></tr></thead>
           <tbody>
             <tr>
-              <td><div class="label-cell">${escHtml(proposalTierMeta?.label ?? 'Custom')}</div><div class="sub-cell">${escHtml(proposalTierMeta?.engineer ?? 'As scoped')}</div></td>
-              <td style="font-size:12px;color:#64748b;">${escHtml(proposalTierMeta?.allocation ?? '\u2014')}</td>
+              <td><div class="label-cell">${escHtml(proposalTierMeta?.label ?? 'Custom')}</div></td>
+              <td style="font-size:12px;color:#64748b;">${escHtml((proposalTierMeta?.engineer ?? 'As scoped').split(' (')[0])}</td>
               <td class="price-col" style="color:#007d6e;">${fmtFull(calc.msoSup)}</td>
             </tr>
           </tbody>
