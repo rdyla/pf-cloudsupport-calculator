@@ -18,9 +18,7 @@ const TABS = [
   { id: 'team',       label: 'Team' },
 ];
 
-interface Props { onOpenSidebar: () => void; }
-
-export default function OppWorkspace({ onOpenSidebar }: Props) {
+export default function OppWorkspace() {
   const isMobile = useIsMobile();
   const { opps, currentOppId, activeTab, setActiveTab, currentUser } = useAppStore();
   const opp = opps.find(o => o.id === currentOppId);
@@ -61,17 +59,6 @@ export default function OppWorkspace({ onOpenSidebar }: Props) {
         display: 'flex', alignItems: 'center', padding: `0 ${pad}px`,
         height: 56, borderBottom: '1px solid var(--border)', gap: 10, flexShrink: 0,
       }}>
-        {/* Hamburger on mobile */}
-        {isMobile && (
-          <button
-            onClick={onOpenSidebar}
-            style={{
-              background: 'none', border: 'none', color: 'var(--text-primary)',
-              cursor: 'pointer', fontSize: 20, padding: '4px 6px', flexShrink: 0, lineHeight: 1,
-            }}
-            aria-label="Open sidebar"
-          >☰</button>
-        )}
         {editingName ? (
           <input
             autoFocus

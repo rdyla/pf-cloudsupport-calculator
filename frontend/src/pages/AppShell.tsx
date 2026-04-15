@@ -9,6 +9,7 @@ import { oppsApi, usersApi } from '../api/client';
 import { useAppStore } from '../store/useAppStore';
 import { useIsMobile } from '../hooks/useWindowWidth';
 import Sidebar from '../components/Sidebar';
+import TopNav from '../components/TopNav';
 import OppWorkspace from '../components/OppWorkspace';
 import DashboardView from '../components/DashboardView';
 
@@ -64,29 +65,31 @@ export default function AppShell() {
   }
 
   return (
-    <div style={{ display: 'flex', height: isMobile ? 'auto' : '100vh', minHeight: isMobile ? '100dvh' : undefined, overflow: isMobile ? 'visible' : 'hidden' }}>
-      {/* Backdrop for mobile sidebar */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-            zIndex: 150,
-          }}
-        />
-      )}
-      <Sidebar
+    <div style={{ display: 'flex', flexDirection: 'column', height: isMobile ? 'auto' : '100vh', minHeight: isMobile ? '100dvh' : undefined, overflow: isMobile ? 'visible' : 'hidden' }}>
+      <TopNav
         onLogout={handleLogout}
-        isOpen={isMobile ? sidebarOpen : true}
-        onClose={() => setSidebarOpen(false)}
+        onOpenSidebar={() => setSidebarOpen(true)}
         isMobile={isMobile}
       />
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: isMobile ? 'visible' : 'hidden', minWidth: 0 }}>
-        {currentOppId
-          ? <OppWorkspace onOpenSidebar={() => setSidebarOpen(true)} />
-          : <DashboardView onOpenSidebar={() => setSidebarOpen(true)} />
-        }
-      </main>
+
+      <div style={{ display: 'flex', flex: 1, overflow: isMobile ? 'visible' : 'hidden', minHeight: 0 }}>
+        {/* Backdrop for mobile sidebar */}
+        {isMobile && sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 150 }}
+          />
+        )}
+        <Sidebar
+          onLogout={handleLogout}
+          isOpen={isMobile ? sidebarOpen : true}
+          onClose={() => setSidebarOpen(false)}
+          isMobile={isMobile}
+        />
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: isMobile ? 'visible' : 'hidden', minWidth: 0 }}>
+          {currentOppId ? <OppWorkspace /> : <DashboardView />}
+        </main>
+      </div>
     </div>
   );
 }

@@ -5,15 +5,15 @@ import { useAppStore } from '../store/useAppStore';
 import { fmt } from '../lib/calcSupport';
 
 interface Props {
-  onLogout: () => void;
+  onLogout?: () => void;
   isOpen?: boolean;
   onClose?: () => void;
   isMobile?: boolean;
 }
 
-export default function Sidebar({ onLogout, isOpen = true, onClose, isMobile = false }: Props) {
+export default function Sidebar({ isOpen = true, onClose, isMobile = false }: Props) {
   const { getToken } = useApiToken();
-  const { opps, removeOpp, currentOppId, setCurrentOppId, currentUser } = useAppStore();
+  const { opps, removeOpp, currentOppId, setCurrentOppId } = useAppStore();
   const [creating, setCreating] = useState(false);
 
   async function handleNewOpp() {
@@ -62,20 +62,17 @@ export default function Sidebar({ onLogout, isOpen = true, onClose, isMobile = f
       flexDirection: 'column', overflow: 'hidden',
       ...mobileStyle,
     }}>
-      {/* Logo + close button on mobile */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <img src="/packetfusionlogo_white.png" alt="Packet Fusion" style={{ width: '100%', maxWidth: 180, display: 'block' }} />
-        {isMobile && (
+      {/* Close button — mobile only */}
+      {isMobile && (
+        <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Opportunities</span>
           <button
             onClick={onClose}
-            style={{
-              background: 'none', border: 'none', color: 'var(--text-muted)',
-              cursor: 'pointer', fontSize: 22, padding: '0 4px', lineHeight: 1, flexShrink: 0,
-            }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 22, padding: '0 4px', lineHeight: 1 }}
             aria-label="Close sidebar"
           >×</button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* New opportunity */}
       <div style={{ padding: '14px 16px 6px' }}>
@@ -161,27 +158,6 @@ export default function Sidebar({ onLogout, isOpen = true, onClose, isMobile = f
         })}
       </div>
 
-      {/* User footer */}
-      {currentUser && (
-        <div style={{
-          borderTop: '1px solid var(--border)', padding: '12px 16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div>
-            <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500 }}>{currentUser.name}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{currentUser.role}</div>
-          </div>
-          <button
-            onClick={onLogout}
-            style={{
-              background: 'none', border: '1px solid var(--border-mid)', borderRadius: 5,
-              color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, padding: '4px 8px',
-            }}
-          >
-            Sign out
-          </button>
-        </div>
-      )}
     </aside>
   );
 }

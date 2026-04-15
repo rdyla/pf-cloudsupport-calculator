@@ -2,20 +2,14 @@ import { useState } from 'react';
 import { useApiToken } from '../auth/useApiToken';
 import { oppsApi } from '../api/client';
 import { useAppStore } from '../store/useAppStore';
-import UsersModal from './UsersModal';
 import { useIsMobile } from '../hooks/useWindowWidth';
 import { fmt } from '../lib/calcSupport';
 
-interface Props {
-  onOpenSidebar: () => void;
-}
-
-export default function DashboardView({ onOpenSidebar }: Props) {
+export default function DashboardView() {
   const { getToken } = useApiToken();
   const { opps, currentUser, setCurrentOppId, setOpps, setActiveTab } = useAppStore();
   const isMobile = useIsMobile();
   const [creating, setCreating] = useState(false);
-  const [showUsers, setShowUsers] = useState(false);
 
   // Time-based greeting
   const hour = new Date().getHours();
@@ -89,20 +83,7 @@ export default function DashboardView({ onOpenSidebar }: Props) {
 
   return (
     <div style={{ overflowY: 'auto', flex: 1, height: isMobile ? 'auto' : '100%' }}>
-      {/* Hamburger on mobile */}
-      {isMobile && (
-        <button
-          onClick={onOpenSidebar}
-          style={{
-            position: 'fixed', top: 14, left: 14, zIndex: 100,
-            background: 'var(--navy-mid)', border: '1px solid var(--border-mid)',
-            borderRadius: 6, color: 'var(--text-primary)', fontSize: 20,
-            padding: '4px 10px', cursor: 'pointer', lineHeight: 1,
-          }}
-        >☰</button>
-      )}
-
-      <div style={{ padding: `36px ${pad}px`, maxWidth: 1000, width: '100%', paddingTop: isMobile ? 60 : 36 }}>
+      <div style={{ padding: `36px ${pad}px`, maxWidth: 1000, width: '100%' }}>
 
         {/* Greeting */}
         <div style={{ marginBottom: 32 }}>
@@ -212,17 +193,6 @@ export default function DashboardView({ onOpenSidebar }: Props) {
               Team View
             </ActionButton>
 
-            {currentUser?.role === 'admin' && (
-              <ActionButton onClick={() => setShowUsers(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <line x1="11" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <line x1="13" y1="6" x2="13" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                Manage Users
-              </ActionButton>
-            )}
 
             {/* Role info card */}
             <div style={{
@@ -246,7 +216,6 @@ export default function DashboardView({ onOpenSidebar }: Props) {
           </div>
         </div>
       </div>
-      {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
     </div>
   );
 }
