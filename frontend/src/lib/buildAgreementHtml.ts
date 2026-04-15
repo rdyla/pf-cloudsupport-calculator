@@ -422,6 +422,16 @@ const PRODUCT_SCOPE: Record<string, { title: string; bullets: string[] }> = {
       'Support for reporting and agent performance insights',
     ],
   },
+  'Virtual Agent': {
+    title: 'Zoom Virtual Agent (ZVA)',
+    bullets: [
+      'Ongoing support for Virtual Agent configuration, including intents, flows, and routing logic',
+      'Updates and optimization of conversational experiences based on business needs and performance trends',
+      'Troubleshooting of bot behavior, escalation paths, and handoff to live agents',
+      'Support for knowledge base integrations and content updates',
+      'Assistance with reporting, analytics, and deflection optimization',
+    ],
+  },
   'Quality Management (QM)': {
     title: 'Zoom Quality Management (QM)',
     bullets: [
