@@ -17,8 +17,9 @@ export function calcSupport(d: OppFormData): OppCalcResult {
     if (ucaasCalc < 2500 && users > 0) { ucaasCalc = 2500; minApplied = true; }
   }
   const ccaasCalc  = (type === 'CCaaS Only' || type === 'UCaaS + CCaaS') ? ccaasLic * 0.30 : 0;
-  const implCalc   = (type === 'CCaaS Only' || type === 'UCaaS + CCaaS') ? implSow * 0.30 : 0;
-  const advAppCalc = type === 'Advanced Applications' ? 2500 + implSow * 0.30 : 0;
+  const implCalc   = (type === 'CCaaS Only' || type === 'UCaaS + CCaaS') ? implSow * 0.20 : 0;
+  const isAdvApp   = type === 'Advanced Applications' || d.advAppEnabled === true;
+  const advAppCalc = isAdvApp ? 2500 + implSow * 0.20 : 0;
   const msoCalc    = msoEnabled ? msoFeeRaw : 0;
 
   // Apply overrides if set
@@ -68,6 +69,7 @@ export const DEFAULT_FORM_DATA: OppFormData = {
   msoEnabled: false,
   msoTier: '',
   msoFee: 0,
+  advAppEnabled: false,
   advAppPlatform: '',
   advAppProducts: [],
   advAppOtherDesc: '',

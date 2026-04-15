@@ -123,8 +123,29 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
           </div>
         </div>
 
+        {/* Advanced Applications Add-On toggle (shown for non-Adv. Apps types) */}
+        {form.oppType !== 'Advanced Applications' && (
+          <div style={{ ...cardStyle, marginTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="checkbox" id="advApp" checked={form.advAppEnabled}
+                onChange={e => {
+                  const checked = e.target.checked;
+                  setForm(prev => ({
+                    ...prev,
+                    advAppEnabled: checked,
+                    ...(!checked ? { advAppPlatform: '', advAppProducts: [], advAppOtherDesc: '' } : {}),
+                  }));
+                }}
+                style={{ width: 16, height: 16, cursor: 'pointer' }} />
+              <label htmlFor="advApp" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                Include Advanced Applications Add-On
+              </label>
+            </div>
+          </div>
+        )}
+
         {/* Advanced Applications — Platform & Products */}
-        {form.oppType === 'Advanced Applications' && (
+        {(form.oppType === 'Advanced Applications' || form.advAppEnabled) && (
           <div style={{ ...cardStyle, marginTop: 16 }}>
             <div style={cardTitleStyle}>Platform</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
@@ -214,14 +235,14 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
                 <div style={hintStyle}>Support: 30% of annual licensing · Excludes usage, consumption, DIDs &amp; telco</div>
               </div>
             )}
-            {form.oppType !== 'UCaaS Only' && (
+            {(form.oppType !== 'UCaaS Only' || form.advAppEnabled) && (
               <div>
                 <InputField label="Impl. SOW ($)" value={form.implSow}
                   onChange={v => set('implSow', Number(v))} />
                 <div style={hintStyle}>
-                  {form.oppType === 'Advanced Applications'
-                    ? '$2,500 base + 30% of SOW'
-                    : 'Support: 30% of SOW value'}
+                  {(form.oppType === 'Advanced Applications' || form.advAppEnabled)
+                    ? '$2,500 base + 20% of SOW'
+                    : 'Support: 20% of SOW value'}
                 </div>
               </div>
             )}
@@ -320,7 +341,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
                 <InputField label="Impl. Support Override ($)" value={form.ovrImpl ?? ''}
                   onChange={v => setOverride('ovrImpl', v)} placeholder={fmt(calc.implCalc)} />
               )}
-              {form.oppType === 'Advanced Applications' && (
+              {(form.oppType === 'Advanced Applications' || form.advAppEnabled) && (
                 <InputField label="Adv. App Support Override ($)" value={form.ovrAdvApp ?? ''}
                   onChange={v => setOverride('ovrAdvApp', v)} placeholder={fmt(calc.advAppCalc)} />
               )}
@@ -398,7 +419,7 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
             <SummaryRow label="Impl. Support" value={calc.implSup} overridden={calc.implOverridden}
               show={form.oppType === 'CCaaS Only' || form.oppType === 'UCaaS + CCaaS'} />
             <SummaryRow label="Advanced App Support" value={calc.advAppSup} overridden={calc.advAppOverridden}
-              show={form.oppType === 'Advanced Applications'} />
+              show={form.oppType === 'Advanced Applications' || form.advAppEnabled} />
             <SummaryRow label="MSO" value={calc.msoSup} overridden={calc.msoOverridden} show={form.msoEnabled} />
             {form.customLines.map((l, i) => (
               <SummaryRow key={i} label={l.label || `Custom ${i + 1}`} value={l.price} />

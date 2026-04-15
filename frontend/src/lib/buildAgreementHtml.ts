@@ -426,7 +426,7 @@ export function buildProposalHtml(
 
   const showUCaaS  = type === 'UCaaS Only' || type === 'UCaaS + CCaaS';
   const showCCaaS  = type === 'CCaaS Only' || type === 'UCaaS + CCaaS';
-  const showAdvApp = type === 'Advanced Applications';
+  const showAdvApp = type === 'Advanced Applications' || d.advAppEnabled === true;
   const proposalTierMeta = getMsoTier(d.msoTier || '');
 
   // Advanced Applications helpers
