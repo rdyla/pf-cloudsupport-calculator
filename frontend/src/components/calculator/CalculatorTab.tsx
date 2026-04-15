@@ -123,6 +123,79 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
           </div>
         </div>
 
+        {/* Advanced Applications — Platform & Products */}
+        {form.oppType === 'Advanced Applications' && (
+          <div style={{ ...cardStyle, marginTop: 16 }}>
+            <div style={cardTitleStyle}>Platform</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              {(['zoom', 'ringcentral', 'other'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setForm(prev => ({ ...prev, advAppPlatform: p, advAppProducts: [], advAppOtherDesc: '' }))}
+                  style={{
+                    padding: '7px 14px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                    border: `1px solid ${form.advAppPlatform === p ? 'var(--teal)' : 'var(--border-mid)'}`,
+                    background: form.advAppPlatform === p ? 'rgba(0,184,160,0.15)' : 'var(--surface)',
+                    color: form.advAppPlatform === p ? 'var(--teal)' : 'var(--text-secondary)',
+                    fontWeight: 500, textTransform: 'capitalize',
+                  }}
+                >
+                  {p === 'zoom' ? 'Zoom' : p === 'ringcentral' ? 'RingCentral' : 'Other'}
+                </button>
+              ))}
+            </div>
+
+            {form.advAppPlatform === 'zoom' && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>Applications</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {ZOOM_PRODUCTS.map(product => (
+                    <ProductCheckbox key={product} label={product} checked={form.advAppProducts.includes(product)}
+                      onChange={checked => setForm(prev => ({
+                        ...prev,
+                        advAppProducts: checked
+                          ? [...prev.advAppProducts, product]
+                          : prev.advAppProducts.filter(p => p !== product),
+                      }))} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {form.advAppPlatform === 'ringcentral' && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>Applications</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {RC_PRODUCTS.map(product => (
+                    <ProductCheckbox key={product.key} label={product.label} checked={form.advAppProducts.includes(product.key)}
+                      onChange={checked => setForm(prev => ({
+                        ...prev,
+                        advAppProducts: checked
+                          ? [...prev.advAppProducts, product.key]
+                          : prev.advAppProducts.filter(p => p !== product.key),
+                      }))} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {form.advAppPlatform === 'other' && (
+              <div style={{ marginTop: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Platform / Application Description
+                </label>
+                <textarea
+                  value={form.advAppOtherDesc}
+                  onChange={e => set('advAppOtherDesc', e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Salesforce Einstein, Genesys AI..."
+                  style={{ ...inputStyle, width: '100%', resize: 'vertical', height: 60 }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Inputs */}
         <div style={{ ...cardStyle, marginTop: 16 }}>
           <div style={cardTitleStyle}>Inputs</div>
@@ -434,6 +507,36 @@ function SummaryRow({ label, value, overridden, show = true, bold, gold, minNote
         {fmt(value)}
       </div>
     </div>
+  );
+}
+
+// ── Advanced Applications product lists ──────────────────────────────────────
+const ZOOM_PRODUCTS = [
+  'Revenue Accelerator',
+  'Virtual Agent',
+  'AI Expert Assist',
+  'Quality Management (QM)',
+];
+
+const RC_PRODUCTS = [
+  { key: 'ace', label: 'ACE — Conversation Intelligence' },
+  { key: 'ava', label: 'AVA — Virtual Agent' },
+  { key: 'air', label: 'AIR — AI Receptionist' },
+];
+
+function ProductCheckbox({ label, checked, onChange }: {
+  label: string; checked: boolean; onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--teal)' }}
+      />
+      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
+    </label>
   );
 }
 

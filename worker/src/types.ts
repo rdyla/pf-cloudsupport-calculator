@@ -22,6 +22,9 @@ export interface OppFormData {
   msoEnabled: boolean;
   msoTier: string;   // MsoTierKey | 'custom' | ''
   msoFee: number;
+  advAppPlatform: 'zoom' | 'ringcentral' | 'other' | '';
+  advAppProducts: string[];
+  advAppOtherDesc: string;
   ovrUcaas:  number | null;
   ovrCcaas:  number | null;
   ovrImpl:   number | null;
