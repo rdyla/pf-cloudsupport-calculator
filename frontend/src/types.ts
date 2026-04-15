@@ -106,5 +106,5 @@ export interface SPFile {
 export interface CurrentUser {
   email: string;
   name: string;
-  role: 'admin' | 'manager' | 'user';
+  role: 'admin' | 'superuser' | 'user';
 }

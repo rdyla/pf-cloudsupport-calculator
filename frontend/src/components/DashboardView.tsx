@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApiToken } from '../auth/useApiToken';
 import { oppsApi } from '../api/client';
 import { useAppStore } from '../store/useAppStore';
+import UsersModal from './UsersModal';
 import { useIsMobile } from '../hooks/useWindowWidth';
 import { fmt } from '../lib/calcSupport';
 
@@ -14,6 +15,7 @@ export default function DashboardView({ onOpenSidebar }: Props) {
   const { opps, currentUser, setCurrentOppId, setOpps, setActiveTab } = useAppStore();
   const isMobile = useIsMobile();
   const [creating, setCreating] = useState(false);
+  const [showUsers, setShowUsers] = useState(false);
 
   // Time-based greeting
   const hour = new Date().getHours();
@@ -66,21 +68,21 @@ export default function DashboardView({ onOpenSidebar }: Props) {
   }
 
   const roleMap: Record<string, string> = {
-    admin:   'Full access — calculator, agreements, price overrides, and user management.',
-    manager: 'Full calculator access including price overrides and discounting.',
-    user:    'Calculator and agreement access. Price overrides are managed by managers or admins.',
+    admin:     'Full access — calculator, agreements, price overrides, and user role management.',
+    superuser: 'Can view and edit all agreements and access manual pricing adjustment controls.',
+    user:      'Can view all agreements. Can edit and save calculators they created.',
   };
   const role = currentUser?.role ?? 'user';
 
   const roleBadgeColor: Record<string, string> = {
-    admin:   'var(--gold)',
-    manager: 'var(--teal)',
-    user:    'var(--text-secondary)',
+    admin:     'var(--gold)',
+    superuser: 'var(--teal)',
+    user:      'var(--text-secondary)',
   };
   const roleBadgeBg: Record<string, string> = {
-    admin:   'rgba(232,184,75,0.15)',
-    manager: 'rgba(0,184,160,0.12)',
-    user:    'rgba(255,255,255,0.07)',
+    admin:     'rgba(232,184,75,0.15)',
+    superuser: 'rgba(0,184,160,0.12)',
+    user:      'rgba(255,255,255,0.07)',
   };
 
   const pad = isMobile ? 20 : 40;
@@ -210,6 +212,18 @@ export default function DashboardView({ onOpenSidebar }: Props) {
               Team View
             </ActionButton>
 
+            {currentUser?.role === 'admin' && (
+              <ActionButton onClick={() => setShowUsers(true)}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="11" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="13" y1="6" x2="13" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                Manage Users
+              </ActionButton>
+            )}
+
             {/* Role info card */}
             <div style={{
               marginTop: 4, padding: '14px 16px',
@@ -232,6 +246,7 @@ export default function DashboardView({ onOpenSidebar }: Props) {
           </div>
         </div>
       </div>
+      {showUsers && <UsersModal onClose={() => setShowUsers(false)} />}
     </div>
   );
 }

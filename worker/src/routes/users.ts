@@ -20,8 +20,8 @@ users.get('/me', async (c) => {
   return c.json({ ok: true, data: user });
 });
 
-// ── List all users (admin/manager) ────────────────────────────────────────────
-users.get('/', requireRole('admin', 'manager'), async (c) => {
+// ── List all users (admin/superuser) ─────────────────────────────────────────
+users.get('/', requireRole('admin', 'superuser'), async (c) => {
   const rows = await c.env.DB.prepare(
     'SELECT email, name, role, created_at FROM users ORDER BY name'
   ).all();
@@ -34,7 +34,7 @@ users.patch('/:email', requireRole('admin'), async (c) => {
   const me = c.get('user') as { email: string };
   const { role } = await c.req.json<{ role: string }>();
 
-  if (!['admin', 'manager', 'user'].includes(role)) {
+  if (!['admin', 'superuser', 'user'].includes(role)) {
     return c.json({ ok: false, error: 'Invalid role' }, 400);
   }
   if (targetEmail === me.email) {

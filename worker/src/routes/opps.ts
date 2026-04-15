@@ -9,21 +9,13 @@ opps.use('*', requireAuth);
 opps.get('/', async (c) => {
   const user = c.get('user') as { email: string; role: string };
 
-  // Admins/managers see all; regular users see only their own
-  const rows = user.role === 'user'
-    ? await c.env.DB.prepare(`
-        SELECT o.*, u.name as creator_name
-        FROM opportunities o
-        JOIN users u ON u.email = o.created_by
-        WHERE o.created_by = ?
-        ORDER BY o.updated_at DESC
-      `).bind(user.email).all()
-    : await c.env.DB.prepare(`
-        SELECT o.*, u.name as creator_name
-        FROM opportunities o
-        JOIN users u ON u.email = o.created_by
-        ORDER BY o.updated_at DESC
-      `).all();
+  // All roles see all opportunities
+  const rows = await c.env.DB.prepare(`
+      SELECT o.*, u.name as creator_name
+      FROM opportunities o
+      JOIN users u ON u.email = o.created_by
+      ORDER BY o.updated_at DESC
+    `).all();
 
   // For each opp, fetch its versions
   const oppList = await Promise.all(
@@ -133,7 +125,7 @@ opps.delete('/:id', async (c) => {
 
 // ── Save a new version ────────────────────────────────────────────────────────
 opps.post('/:id/versions', async (c) => {
-  const user = c.get('user') as { email: string };
+  const user = c.get('user') as { email: string; role: string };
   const oppId = c.req.param('id');
   const { data, calc, label } = await c.req.json<{
     data: OppFormData;
@@ -141,9 +133,12 @@ opps.post('/:id/versions', async (c) => {
     label?: string;
   }>();
 
-  const opp = await c.env.DB.prepare('SELECT id FROM opportunities WHERE id = ?')
-    .bind(oppId).first();
+  const opp = await c.env.DB.prepare('SELECT id, created_by FROM opportunities WHERE id = ?')
+    .bind(oppId).first<{ id: string; created_by: string }>();
   if (!opp) return c.json({ ok: false, error: 'Opportunity not found' }, 404);
+  if (opp.created_by !== user.email && user.role === 'user') {
+    return c.json({ ok: false, error: 'Forbidden' }, 403);
+  }
 
   // Get next version number
   const maxRow = await c.env.DB.prepare(

@@ -92,7 +92,9 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
     setTimeout(() => setToast(null), 3000);
   }
 
-  const canDiscount = currentUser?.role === 'admin' || currentUser?.role === 'manager';
+  const isOwner   = opp.createdBy === currentUser?.email;
+  const canEdit   = currentUser?.role !== 'user' || isOwner;
+  const canDiscount = currentUser?.role === 'admin' || currentUser?.role === 'superuser';
   const isMobile = useIsMobile();
 
   return (
@@ -324,17 +326,24 @@ export default function CalculatorTab({ opp, onTabChange }: Props) {
           </div>
         </div>
 
+        {!canEdit && (
+          <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 6, fontSize: 12, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-mid)' }}>
+            View only — you can edit calculators you created.
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button
-            onClick={() => handleSave()}
-            disabled={saving}
-            style={{ ...primaryBtnStyle, flex: 1 }}
-          >
-            {saving ? 'Saving…' : 'Save Version'}
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => handleSave()}
+              disabled={saving}
+              style={{ ...primaryBtnStyle, flex: 1 }}
+            >
+              {saving ? 'Saving…' : 'Save Version'}
+            </button>
+          )}
           <button
             onClick={() => onTabChange('agreement')}
-            style={{ ...secondaryBtnStyle, flex: 1 }}
+            style={{ ...secondaryBtnStyle, flex: canEdit ? 1 : undefined }}
           >
             Preview →
           </button>

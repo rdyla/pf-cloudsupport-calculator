@@ -113,8 +113,8 @@ export async function requireAuth(c: Context<{ Bindings: Env }>, next: Next) {
     if (!email) return c.json({ ok: false, error: 'Token missing email/upn claim' }, 401);
 
     // Upsert user in D1 on every login (keeps name/role fresh)
-    // Role: if the user has an 'admin' or 'manager' app role assigned in Azure, use that; default 'user'
-    const azureRole = payload.roles?.find(r => ['admin', 'manager'].includes(r)) ?? 'user';
+    // Role: if the user has an 'admin' or 'superuser' app role assigned in Azure, use that; default 'user'
+    const azureRole = payload.roles?.find(r => ['admin', 'superuser'].includes(r)) ?? 'user';
 
     await c.env.DB.prepare(`
       INSERT INTO users (email, name, azure_oid, role)

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApiToken } from '../auth/useApiToken';
 import { oppsApi } from '../api/client';
 import { useAppStore } from '../store/useAppStore';
+
 import { useIsMobile } from '../hooks/useWindowWidth';
 import CalculatorTab from './calculator/CalculatorTab';
 import AgreementTab from './calculator/AgreementTab';
@@ -21,7 +22,7 @@ interface Props { onOpenSidebar: () => void; }
 
 export default function OppWorkspace({ onOpenSidebar }: Props) {
   const isMobile = useIsMobile();
-  const { opps, currentOppId, activeTab, setActiveTab } = useAppStore();
+  const { opps, currentOppId, activeTab, setActiveTab, currentUser } = useAppStore();
   const opp = opps.find(o => o.id === currentOppId);
   // Pick up a tab requested externally (e.g. dashboard "Team View" button), then clear it
   const [tab, setTab] = useState(activeTab || 'calculator');
@@ -48,6 +49,7 @@ export default function OppWorkspace({ onOpenSidebar }: Props) {
 
   if (!opp) return null;
 
+  const canEdit = currentUser?.role !== 'user' || opp.createdBy === currentUser?.email;
   const latest = opp.versions[opp.versions.length - 1];
 
   const pad = isMobile ? 16 : 28;
@@ -86,13 +88,13 @@ export default function OppWorkspace({ onOpenSidebar }: Props) {
           />
         ) : (
           <div
-            onClick={() => { setNameValue(opp.name); setEditingName(true); }}
-            title="Click to rename"
+            onClick={() => { if (canEdit) { setNameValue(opp.name); setEditingName(true); } }}
+            title={canEdit ? 'Click to rename' : undefined}
             style={{
               fontFamily: 'DM Serif Display, serif', fontSize: isMobile ? 16 : 20,
               color: 'var(--text-primary)', flex: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              cursor: 'text',
+              cursor: canEdit ? 'text' : 'default',
             }}
           >
             {opp.name}
