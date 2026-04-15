@@ -399,6 +399,77 @@ function buildMsoSection(d: OppFormData, calc: OppCalcResult): string {
   `;
 }
 
+// ─── Advanced Applications product scope ─────────────────────────────────────
+
+const PRODUCT_SCOPE: Record<string, { title: string; bullets: string[] }> = {
+  'Revenue Accelerator': {
+    title: 'Zoom Revenue Accelerator (ZRA)',
+    bullets: [
+      'Support for call recording, transcription, and conversation intelligence features',
+      'Assistance with configuration of trackers, keywords, and coaching insights',
+      'Troubleshooting CRM integrations (e.g., Salesforce, HubSpot) related to ZRA',
+      'Support for reporting dashboards and performance analytics',
+      'Guidance on optimization of sales workflows and coaching metrics',
+    ],
+  },
+  'AI Expert Assist': {
+    title: 'Zoom AI Expert Assist',
+    bullets: [
+      'Support for real-time agent assist configuration, including knowledge surfacing and recommendations',
+      'Troubleshooting AI-driven suggestions, workflows, and data integrations',
+      'Assistance with knowledge base connections and content tuning',
+      'Ongoing optimization of AI models based on usage and feedback',
+      'Support for reporting and agent performance insights',
+    ],
+  },
+  'Quality Management (QM)': {
+    title: 'Zoom Quality Management (QM)',
+    bullets: [
+      'Support for call evaluation forms, scoring models, and workflows',
+      'Assistance with calibration sessions and evaluator alignment',
+      'Troubleshooting recording access, evaluation workflows, and reporting',
+      'Support for QM reporting dashboards and analytics',
+      'Guidance on best practices for agent performance management',
+    ],
+  },
+  air: {
+    title: 'RingCentral AIR \u2014 AI Receptionist',
+    bullets: [
+      'Ongoing support for AI Receptionist configuration, including call handling logic, greetings, and routing rules',
+      'Updates to business hours, call flows, and escalation paths to live agents or extensions',
+      'Troubleshooting call routing issues, recognition errors, and caller experience gaps',
+      'Assistance with directory updates and name/intent recognition tuning',
+      'Guidance on optimizing automation to improve caller experience and reduce misroutes',
+    ],
+  },
+  ava: {
+    title: 'RingCentral AVA \u2014 AI Virtual Agent',
+    bullets: [
+      'Ongoing support for Virtual Agent configuration, including intents, dialog flows, and escalation logic',
+      'Updates and optimization of conversational experiences across voice and digital channels',
+      'Troubleshooting bot performance, fallback handling, and agent handoff workflows',
+      'Support for knowledge base integrations and content updates',
+      'Assistance with analytics, reporting, and containment/deflection optimization',
+    ],
+  },
+  ace: {
+    title: 'RingCentral ACE \u2014 Conversation Intelligence',
+    bullets: [
+      'Support for call recording, transcription, and AI-driven conversation analysis features',
+      'Assistance with configuration of keywords, trackers, and coaching insights',
+      'Troubleshooting CRM integrations (e.g., Salesforce, HubSpot) related to ACE',
+      'Support for reporting dashboards, scorecards, and performance analytics',
+      'Guidance on optimizing coaching workflows and agent performance programs',
+    ],
+  },
+};
+
+const ADV_APP_GENERAL_NOTES = [
+  'Support includes configuration updates and optimization within the existing deployed environment',
+  'Net-new builds, major redesigns, or custom integrations may require a separate Statement of Work (SOW)',
+  'Third-party integrations and custom API workflows are supported on a best-effort basis unless otherwise scoped',
+];
+
 // ─── buildProposalHtml ────────────────────────────────────────────────────────
 
 export function buildProposalHtml(
@@ -499,6 +570,34 @@ export function buildProposalHtml(
       </div>
   ` : '';
 
+  const advAppProducts = d.advAppProducts ?? [];
+  const advAppScopeHtml = (advAppProducts.length > 0 || d.advAppPlatform === 'other') ? `
+    <div style="margin-top:20px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#64748b;margin-bottom:14px;">Scope of Support</div>
+      ${advAppProducts.map(p => {
+        const scope = PRODUCT_SCOPE[p];
+        if (!scope) return '';
+        return `
+          <div style="margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:6px;">${escHtml(scope.title)}</div>
+            <ul style="margin:0;padding-left:20px;color:#374151;font-size:12.5px;line-height:1.75;">
+              ${scope.bullets.map(b => `<li style="margin-bottom:2px;">${escHtml(b)}</li>`).join('')}
+            </ul>
+          </div>`;
+      }).join('')}
+      ${d.advAppPlatform === 'other' && d.advAppOtherDesc ? `
+        <div style="margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:6px;">${escHtml(d.advAppOtherDesc)}</div>
+          <p style="margin:0;font-size:12.5px;color:#64748b;font-style:italic;">Scope of support to be defined in accordance with the delivered solution.</p>
+        </div>` : ''}
+      <div style="margin-top:16px;padding:10px 14px;background:#f8fafc;border-left:3px solid #00b8a0;border-radius:0 6px 6px 0;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;margin-bottom:6px;">General Notes</div>
+        <ul style="margin:0;padding-left:20px;color:#374151;font-size:12px;line-height:1.75;">
+          ${ADV_APP_GENERAL_NOTES.map(n => `<li style="margin-bottom:2px;">${escHtml(n)}</li>`).join('')}
+        </ul>
+      </div>
+    </div>` : '';
+
   const advAppSection = showAdvApp ? `
       <div class="section-header">
         <div class="section-num">${secNum()}</div>
@@ -517,12 +616,13 @@ export function buildProposalHtml(
                   : `<span style="color:#94a3b8;font-style:italic;">No specific applications selected</span>`
                 }
               </td>
-              <td class="price-col">${fmtFull(calc.advAppSup)}</td>
+              <td class="price-col">${calc.advAppSup > 0 ? fmtFull(calc.advAppSup) : 'Included'}</td>
             </tr>
           </tbody>
-          <tfoot><tr><td colspan="3">Includes $2,500 base fee plus 30% of implementation SOW. Auto-renews and co-terms with Customer\u2019s Subscription Term.</td></tr></tfoot>
+          <tfoot><tr><td colspan="3">${calc.advAppSup > 0 ? 'Includes $2,500 base fee plus 20% of implementation SOW. ' : 'Advanced Applications support included within CCaaS CloudSupport engagement. '}Auto-renews and co-terms with Customer\u2019s Subscription Term.</td></tr></tfoot>
         </table>
       </div>
+      ${advAppScopeHtml}
   ` : '';
 
   const msoSection = calc.msoEnabled ? `
